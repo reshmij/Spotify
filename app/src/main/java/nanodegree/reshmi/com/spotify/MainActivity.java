@@ -1,5 +1,7 @@
 package nanodegree.reshmi.com.spotify;
 
+import android.app.SearchManager;
+import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -13,6 +15,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.SearchView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
@@ -39,7 +42,7 @@ public class MainActivity extends AppCompatActivity {
 
     ArtistSearchListAdapter mAdapter = null;
     SearchArtistFromSpotifyTask mSearchArtistTask = null;
-    EditText mSearchEditText = null;
+    SearchView mSearchView = null;
     ListView mListView = null;
     String mLastQuery = null;
 
@@ -53,13 +56,21 @@ public class MainActivity extends AppCompatActivity {
 
         //Get a handle to the views
         mListView = (ListView) findViewById(R.id.list_view_artist_search_results);
-        mSearchEditText = (EditText) findViewById(R.id.edit_text_artist_search);
+        mSearchView = (SearchView) findViewById(R.id.search_view_artist_search);
+
+        // Associate searchable configuration with the SearchView
+        SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
+        mSearchView.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
+        mSearchView.setIconifiedByDefault(false);
 
         int selectPosition = -1;
         if(savedInstanceState!=null){
             mArtistInfoList = savedInstanceState.getParcelableArrayList(ARTISTS_LIST);
             mLastQuery = savedInstanceState.getString(ARTIST_QUERY);
             selectPosition = savedInstanceState.getInt(LIST_POSITION, mListView.getSelectedItemPosition());
+        }
+        else{
+            mLastQuery = null;
         }
 
         mAdapter = new ArtistSearchListAdapter(this,mArtistInfoList);
@@ -82,43 +93,56 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        mSearchEditText.addTextChangedListener(new TextWatcher() {
+        mSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i2, int i3) {
-
+            public boolean onQueryTextSubmit(String s) {
+                return false;
             }
 
             @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i2, int i3) {
-
-            }
-
-            @Override
-            public void afterTextChanged(Editable editable) {
-
-                if (editable != null && (editable.length() > 0) ) {
-
-                    String query = editable.toString();
-
-                    if(query.equals(mLastQuery)){
-                        //Query has not changed. Return here.
-                        return;
-                    }
-
-                    //If an async task is already running, cancel it
-                    if (mSearchArtistTask != null && !mSearchArtistTask.isCancelled()) {
-                        mSearchArtistTask.cancel(true);
-                    }
-
-                    mSearchArtistTask = new SearchArtistFromSpotifyTask();
-                    mSearchArtistTask.execute(query);
-
-                } else {
-                    //Search field is empty. Clear the list
-                    mAdapter.clear();
-                }
+            public boolean onQueryTextChange(String s) {
+                doMySearch(s);
+                return true;
             }
         });
+
+        handleIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        handleIntent(intent);
+    }
+
+    private void handleIntent(Intent intent) {
+
+        if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
+            String query = intent.getStringExtra(SearchManager.QUERY);
+            doMySearch(query);
+        }
+    }
+
+    private void doMySearch(String query) {
+        if (query != null && (query.length() > 0) ) {
+
+            if(query.equals(mLastQuery)){
+                //Query has not changed. Return here.
+                return;
+            }
+
+            //If an async task is already running, cancel it
+            if (mSearchArtistTask != null && !mSearchArtistTask.isCancelled()) {
+                mSearchArtistTask.cancel(true);
+            }
+
+            mSearchArtistTask = new SearchArtistFromSpotifyTask();
+            mSearchArtistTask.execute(query);
+
+        } else {
+            //Search field is empty. Clear the list
+            mAdapter.clear();
+        }
     }
 
     @Override
@@ -135,10 +159,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
 
-        //Save the instance of the aerch results and query
+        //Save the instance of the search results and query
         if(mArtistInfoList!=null) {
             outState.putParcelableArrayList(ARTISTS_LIST, mArtistInfoList);
-            outState.putString(ARTIST_QUERY, mSearchEditText.getText().toString());
+            outState.putString(ARTIST_QUERY, mSearchView.getQuery().toString());
             outState.putInt(LIST_POSITION, mListView.getSelectedItemPosition());
         }
     }

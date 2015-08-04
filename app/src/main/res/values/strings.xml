@@ -6,4 +6,5 @@
     <string name="top_ten_tracks">Top 10 tracks</string>
     <string name="artist_not_found">We could not find the artist. Please try refining your search</string>
     <string name="tracks_not_found">Sorry, we were unable to get this data. Please try again later.</string>
+    <string name="search_hint">Search</string>
 </resources>

@@ -9,10 +9,11 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context=".MainActivity">
 
-    <EditText
-        android:id="@+id/edit_text_artist_search"
+    <SearchView
+        android:id="@+id/search_view_artist_search"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:singleLine="true"
          />
 
     <ListView

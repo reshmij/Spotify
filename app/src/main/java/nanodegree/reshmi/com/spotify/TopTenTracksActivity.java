@@ -90,7 +90,7 @@ public class TopTenTracksActivity extends AppCompatActivity {
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        //Save am instance of the Top 10 tracks list
+        //Save an instance of the Top 10 tracks list
         outState.putParcelableArrayList(TRACK_LIST, mTrackInfoResults);
     }
 
