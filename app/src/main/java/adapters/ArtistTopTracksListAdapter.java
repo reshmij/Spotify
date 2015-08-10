@@ -95,7 +95,7 @@ public class ArtistTopTracksListAdapter extends BaseAdapter {
         ImageView imgView = holder.img;
         String imageUrl = mTrackInfoList.get(position).getAlbumThumbnailSmallUrl();
 
-        if (imageUrl != null) {
+        if ((imageUrl != null)&& (!imageUrl.isEmpty())) {
             Picasso.with(mContext).load(imageUrl).into(imgView);
         }
 
