@@ -13,8 +13,6 @@ import com.squareup.picasso.Picasso;
 import java.util.ArrayList;
 import java.util.List;
 
-import kaaes.spotify.webapi.android.models.Image;
-import model.ArtistInfo;
 import model.TrackInfo;
 import nanodegree.reshmi.com.spotify.R;
 
@@ -77,7 +75,7 @@ public class ArtistTopTracksListAdapter extends BaseAdapter {
 
         if (convertView == null) {
 
-            row = inflater.inflate(R.layout.artist_top_ten_tracks_list_item, parent, false);
+            row = inflater.inflate(R.layout.top_ten_tracks_list_item, parent, false);
 
             holder.tv1 = (TextView) row.findViewById(R.id.text_view_track);
             holder.tv2 = (TextView) row.findViewById(R.id.text_view_album);

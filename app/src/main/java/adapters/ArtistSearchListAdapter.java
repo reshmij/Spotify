@@ -23,6 +23,7 @@ public class ArtistSearchListAdapter extends BaseAdapter {
 
     private List<ArtistInfo> mArtistInfoList = new ArrayList<ArtistInfo>();
     private Context mContext = null;
+    private int selectedPosition = -1;
 
     private static LayoutInflater inflater = null;
 
@@ -62,6 +63,15 @@ public class ArtistSearchListAdapter extends BaseAdapter {
         return 0;
     }
 
+    public void setSelectedPosition ( int position ){
+        selectedPosition = position;
+        notifyDataSetChanged();
+    }
+
+    public int getSelectedPosition (  ){
+        return selectedPosition;
+    }
+
     private class ViewHolder {
         TextView tv;
         ImageView img;
@@ -84,6 +94,13 @@ public class ArtistSearchListAdapter extends BaseAdapter {
         } else {
 
             holder = (ViewHolder) convertView.getTag();
+        }
+
+        // change the row color based on selected state
+        if(getSelectedPosition() == position){
+            row.setBackgroundColor(mContext.getResources().getColor(R.color.blue));
+        }else{
+            row.setBackgroundColor(mContext.getResources().getColor(R.color.grey));
         }
 
         holder.tv.setText(mArtistInfoList.get(position).getName());
