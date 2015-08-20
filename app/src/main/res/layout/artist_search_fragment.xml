@@ -17,9 +17,9 @@
          />
 
     <ListView
+        style="@style/ArtistSearchListStyle"
         android:id="@+id/list_view_artist_search_results"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-    </ListView>
+        android:layout_height="wrap_content" />
 
 </LinearLayout>

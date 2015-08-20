@@ -1,6 +1,9 @@
 package nanodegree.reshmi.com.spotify;
 
 import android.app.Fragment;
+import android.app.FragmentManager;
+import android.app.FragmentTransaction;
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -28,8 +31,9 @@ import model.TrackInfo;
 /**
  * Created by annupinju on 6/30/2015.
  */
-public class TopTenTracksActivity extends AppCompatActivity {
+public class TopTenTracksActivity extends AppCompatActivity implements TopTenTracksFragment.OnTrackSelectedListener {
 
+    private String LOG_TAG = TopTenTracksActivity.class.getSimpleName();
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -40,8 +44,8 @@ public class TopTenTracksActivity extends AppCompatActivity {
 
             TopTenTracksFragment topTenTracksFragment = new TopTenTracksFragment();
             Bundle args = getIntent().getExtras();
-            topTenTracksFragment.setArguments(args);
-            getFragmentManager().beginTransaction().add(R.id.top_ten_tracks_container, (Fragment)topTenTracksFragment).commit();
+            if (args != null) topTenTracksFragment.setArguments(args);
+            getFragmentManager().beginTransaction().add(R.id.top_ten_tracks_container, (Fragment) topTenTracksFragment).commit();
         }
 
         // Set up the action bar
@@ -62,5 +66,13 @@ public class TopTenTracksActivity extends AppCompatActivity {
             default:
                 return super.onOptionsItemSelected(item);
         }
+    }
+
+    @Override
+    public void onSelectTrack() {
+        // If this callback is called, it implies this is a single pane layout
+        //So show the Music Player Fragment embedded within an activity
+        Intent intent = new Intent(this, MusicPlayerActivity.class);
+        startActivity(intent);
     }
 }

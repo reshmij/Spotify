@@ -1,6 +1,9 @@
 package nanodegree.reshmi.com.spotify;
 
+import android.app.Activity;
 import android.app.Fragment;
+import android.app.FragmentManager;
+import android.app.FragmentTransaction;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -8,6 +11,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -40,11 +44,30 @@ public class TopTenTracksFragment extends Fragment {
     private static final String LOG_TAG = TopTenTracksFragment.class.getSimpleName();
     private static final String TRACK_LIST = "trackList";
     private static final String TRACK_LIST_POS = "trackListPosition";
+    private OnTrackSelectedListener mListener = null;
+
+    public static TopTenTracksFragment newInstance(String artistId) {
+        TopTenTracksFragment f = new TopTenTracksFragment();
+
+        // Supply artistId input as an argument.
+        Bundle args = new Bundle();
+        args.putString(ArtistSearchFragment.ARTIST_ID, artistId);
+        f.setArguments(args);
+
+        return f;
+    }
+
+    @Override
+    public void onAttach(Activity activity) {
+        super.onAttach(activity);
+        mListener = (OnTrackSelectedListener)activity;
+    }
 
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View rootView =  inflater.inflate(R.layout.top_ten_tracks_fragment, container, false);
+
 
         int selectPosition = -1;
         if(savedInstanceState != null){
@@ -55,6 +78,12 @@ public class TopTenTracksFragment extends Fragment {
 
         // Get a handle to the list view
         mTopTenTrackList = (ListView) rootView.findViewById(R.id.list_view_top_ten_tracks);
+        mTopTenTrackList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                mListener.onSelectTrack();
+            }
+        });
 
         // Set list adapter
         mAdapter = new ArtistTopTracksListAdapter(getActivity(), mTrackInfoResults);
@@ -96,6 +125,10 @@ public class TopTenTracksFragment extends Fragment {
         super.onSaveInstanceState(outState);
         //Save an instance of the Top 10 tracks list
         outState.putParcelableArrayList(TRACK_LIST, mTrackInfoResults);
+    }
+
+    public interface OnTrackSelectedListener{
+        public void onSelectTrack( );
     }
 
 
@@ -187,5 +220,4 @@ public class TopTenTracksFragment extends Fragment {
             return images.get(last).url;
         }
     }
-
 }

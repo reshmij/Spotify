@@ -1,0 +1,8 @@
+<resources>
+    <!--
+    For more on layout aliases, see:
+    http://developer.android.com/training/multiscreen/screensizes.html#TaskUseAliasFilters
+    -->
+
+    <item type="layout" name="artist_search_layout">@layout/activity_artist_search_one_pane</item>
+</resources>

@@ -1,19 +1,24 @@
 package nanodegree.reshmi.com.spotify;
 
+import android.app.FragmentManager;
 import android.content.Intent;
 import android.os.Bundle;
+
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
+import android.util.DisplayMetrics;
+import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.LinearLayout;
 
 import retrofit.http.HEAD;
 
 /**
  * Created by annupinju on 8/12/2015.
  */
-public class ArtistSearchActivity extends AppCompatActivity implements ArtistSearchFragment.OnListItemClickListener{
+public class ArtistSearchActivity extends AppCompatActivity implements ArtistSearchFragment.OnListItemClickListener, TopTenTracksFragment.OnTrackSelectedListener {
 
     ArtistSearchFragment mArtistSearchFragment;
     boolean mTwoPane = false;
@@ -23,7 +28,7 @@ public class ArtistSearchActivity extends AppCompatActivity implements ArtistSea
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_artist_search);
+        setContentView(R.layout.artist_search_layout);
 
         mArtistSearchFragment = (ArtistSearchFragment) getFragmentManager().findFragmentById(R.id.artist_search_fragment);
         mArtistSearchFragment.handleIntent(getIntent());
@@ -31,9 +36,9 @@ public class ArtistSearchActivity extends AppCompatActivity implements ArtistSea
         View topTenTracksView = findViewById(R.id.top_ten_tracks_container);
         mTwoPane = topTenTracksView != null && topTenTracksView.getVisibility() == View.VISIBLE;
 
-        if(mTwoPane){
+        if (mTwoPane) {
 
-            if(savedInstanceState == null){
+            if (savedInstanceState == null) {
                 getFragmentManager().beginTransaction()
                         .replace(R.id.top_ten_tracks_container, new TopTenTracksFragment(), TOP_TEN_FRAGMENT_TAG)
                         .commit();
@@ -52,36 +57,30 @@ public class ArtistSearchActivity extends AppCompatActivity implements ArtistSea
     }
 
     @Override
-    public void onItemClick(String artistName, String artistId ) {
+    public void onItemClick(String artistName, String artistId) {
 
-        if(mTwoPane){
+        if (mTwoPane) {
             //Replace the top ten tracks fragment on the right pane
-            TopTenTracksFragment topTenTracksFragment = new TopTenTracksFragment();
-            Bundle args = new Bundle();
-            args.putString(ArtistSearchFragment.ARTIST_ID,artistId);
-            args.putString(ArtistSearchFragment.ARTIST_NAME,artistName);
-            topTenTracksFragment.setArguments(args);
+            TopTenTracksFragment topTenTracksFragment = TopTenTracksFragment.newInstance(artistId);
 
             getFragmentManager().beginTransaction()
                     .replace(R.id.top_ten_tracks_container, topTenTracksFragment, TOP_TEN_FRAGMENT_TAG)
                     .commit();
 
             setUpActionBarSubtitle(artistName);
-        }
-        else{
+        } else {
             //Launch the TopTenTracksActivity
             Intent intent = new Intent(this, TopTenTracksActivity.class);
-            intent.putExtra(ArtistSearchFragment.ARTIST_ID,artistId);
-            intent.putExtra(ArtistSearchFragment.ARTIST_NAME,artistName);
+            intent.putExtra(ArtistSearchFragment.ARTIST_ID, artistId);
+            intent.putExtra(ArtistSearchFragment.ARTIST_NAME, artistName);
             startActivity(intent);
         }
     }
 
-    private void setUpActionBarSubtitle(String artistName){
+    private void setUpActionBarSubtitle(String artistName) {
         ActionBar actionBar = getSupportActionBar();
         actionBar.setSubtitle(artistName);
     }
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -103,5 +102,16 @@ public class ArtistSearchActivity extends AppCompatActivity implements ArtistSea
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onSelectTrack() {
+
+        if (mTwoPane) {
+            // The device is using a large layout, so show the MusicPlayer fragment as a dialog
+            FragmentManager fragmentManager = getFragmentManager();
+            MusicPlayerFragment newFragment = new MusicPlayerFragment();
+            newFragment.show(fragmentManager, "dialog");
+        }
     }
 }
