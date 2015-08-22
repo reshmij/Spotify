@@ -36,14 +36,16 @@ public class TopTenTracksFragment extends Fragment {
     GetArtistTopTracksTask mGetTopTracksTask = null;
     ArtistTopTracksListAdapter mAdapter = null;
     ListView mTopTenTrackList = null;
+    String mArtistName = null;
     ArrayList<TrackInfo> mTrackInfoResults = new ArrayList<>();
 
     public static final int SMALL_THUMBNAIL_WIDTH = 200; //240px
     public static final int LARGE_THUMBNAIL_WIDTH = 640; //640px
 
     private static final String LOG_TAG = TopTenTracksFragment.class.getSimpleName();
-    private static final String TRACK_LIST = "trackList";
-    private static final String TRACK_LIST_POS = "trackListPosition";
+    public static final String TRACK_LIST = "trackList";
+    public static final String TRACK_LIST_POS = "trackListPosition";
+    public static final String ARTIST_NAME = "artistName";
     private OnTrackSelectedListener mListener = null;
 
     public static TopTenTracksFragment newInstance(String artistId) {
@@ -81,7 +83,7 @@ public class TopTenTracksFragment extends Fragment {
         mTopTenTrackList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                mListener.onSelectTrack();
+                mListener.onSelectTrack(mTrackInfoResults,i, mArtistName);
             }
         });
 
@@ -93,9 +95,11 @@ public class TopTenTracksFragment extends Fragment {
             mTopTenTrackList.setSelection(selectPosition);
         }
 
+        //Make a remote call to fetch the top tracks, if there is no saved instance
+        Bundle args = getArguments();
+        mArtistName = args.getString(ArtistSearchFragment.ARTIST_NAME);
+
         if(savedInstanceState == null){
-            //Make a remote call to fetch the top tracks, if there is no saved instance
-            Bundle args = getArguments();
 
             if(args!=null) {
                 String artistId = args.getString(ArtistSearchFragment.ARTIST_ID);
@@ -128,7 +132,7 @@ public class TopTenTracksFragment extends Fragment {
     }
 
     public interface OnTrackSelectedListener{
-        public void onSelectTrack( );
+        public void onSelectTrack(ArrayList<TrackInfo> trackInfoResults, int position , String artistName);
     }
 
 

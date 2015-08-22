@@ -3,6 +3,7 @@
     package="nanodegree.reshmi.com.spotify">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -43,6 +44,9 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".TopTenTracksActivity" />
         </activity>
+
+        <service
+            android:name=".MusicPlayerService" />
 
     </application>
 

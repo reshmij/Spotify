@@ -13,6 +13,9 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.LinearLayout;
 
+import java.util.ArrayList;
+
+import model.TrackInfo;
 import retrofit.http.HEAD;
 
 /**
@@ -105,12 +108,12 @@ public class ArtistSearchActivity extends AppCompatActivity implements ArtistSea
     }
 
     @Override
-    public void onSelectTrack() {
+    public void onSelectTrack(ArrayList<TrackInfo> trackInfoResults, int position, String artistName ){
 
         if (mTwoPane) {
             // The device is using a large layout, so show the MusicPlayer fragment as a dialog
             FragmentManager fragmentManager = getFragmentManager();
-            MusicPlayerFragment newFragment = new MusicPlayerFragment();
+            MusicPlayerFragment newFragment = MusicPlayerFragment.newInstance(trackInfoResults, position, artistName);
             newFragment.show(fragmentManager, "dialog");
         }
     }

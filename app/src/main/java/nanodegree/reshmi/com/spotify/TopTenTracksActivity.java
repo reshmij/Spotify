@@ -69,10 +69,13 @@ public class TopTenTracksActivity extends AppCompatActivity implements TopTenTra
     }
 
     @Override
-    public void onSelectTrack() {
+    public void onSelectTrack(ArrayList<TrackInfo> trackInfoResults, int position, String artistName ){
         // If this callback is called, it implies this is a single pane layout
         //So show the Music Player Fragment embedded within an activity
         Intent intent = new Intent(this, MusicPlayerActivity.class);
+        intent.putExtra(TopTenTracksFragment.TRACK_LIST,trackInfoResults);
+        intent.putExtra(TopTenTracksFragment.TRACK_LIST_POS,position);
+        intent.putExtra(TopTenTracksFragment.ARTIST_NAME,artistName);
         startActivity(intent);
     }
 }

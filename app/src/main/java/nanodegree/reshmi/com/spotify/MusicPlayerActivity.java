@@ -15,15 +15,19 @@ public class MusicPlayerActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        FragmentManager fragmentManager = getFragmentManager();
-        MusicPlayerFragment newFragment = new MusicPlayerFragment();
+        if(savedInstanceState==null) {
+            FragmentManager fragmentManager = getFragmentManager();
 
-        // This activity is called only on a smaller device
-        // The dialog fragment has to be embedded full screen.
-        FragmentTransaction transaction = fragmentManager.beginTransaction();
+            MusicPlayerFragment newFragment = new MusicPlayerFragment();
+            newFragment.setArguments(getIntent().getExtras());
 
-        transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN);
-        transaction.add(android.R.id.content, newFragment)
-                   .addToBackStack(null).commit();
+            // This activity is called only on a smaller device
+            // The dialog fragment has to be embedded full screen.
+            FragmentTransaction transaction = fragmentManager.beginTransaction();
+
+            transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN);
+            transaction.add(android.R.id.content, newFragment)
+                    .addToBackStack(null).commit();
+        }
     }
 }

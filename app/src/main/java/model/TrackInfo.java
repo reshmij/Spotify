@@ -13,16 +13,14 @@ public class TrackInfo implements Parcelable {
     private String albumName;
     private String albumThumbnailSmallUrl;
     private String getAlbumThumbnailLrgUrl;
-    private String previewUrl;
+    private String trackUrl;
 
-
-
-    public TrackInfo(String trackName, String albumName, String albumThumbnailSmallUrl, String getAlbumThumbnailLrgUrl, String previewUrl) {
+    public TrackInfo(String trackName, String albumName, String albumThumbnailSmallUrl, String getAlbumThumbnailLrgUrl, String trackUrl) {
         this.trackName = trackName;
         this.albumName = albumName;
         this.albumThumbnailSmallUrl = albumThumbnailSmallUrl;
         this.getAlbumThumbnailLrgUrl = getAlbumThumbnailLrgUrl;
-        this.previewUrl = previewUrl;
+        this.trackUrl = trackUrl;
     }
 
     private TrackInfo(Parcel in) {
@@ -30,11 +28,11 @@ public class TrackInfo implements Parcelable {
         this.albumName = in.readString();
         this.albumThumbnailSmallUrl = in.readString();
         this.getAlbumThumbnailLrgUrl = in.readString();
-        this.previewUrl = in.readString();
+        this.trackUrl = in.readString();
     }
 
-    public String getPreviewUrl() {
-        return previewUrl;
+    public String getTrackUrl() {
+        return trackUrl;
     }
 
     public String getGetAlbumThumbnailLrgUrl() {
@@ -65,7 +63,7 @@ public class TrackInfo implements Parcelable {
         parcel.writeString(this.albumName);
         parcel.writeString(this.albumThumbnailSmallUrl);
         parcel.writeString(this.getAlbumThumbnailLrgUrl);
-        parcel.writeString(this.previewUrl);
+        parcel.writeString(this.trackUrl);
     }
 
     public static final Parcelable.Creator<TrackInfo> CREATOR
