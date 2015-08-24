@@ -8,19 +8,16 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
-import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
-import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.SeekBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.squareup.picasso.Picasso;
 
@@ -31,21 +28,12 @@ import model.TrackInfo;
 /**
  * Created by annupinju on 8/15/2015.
  */
-public class MusicPlayerFragment extends DialogFragment implements View.OnClickListener {
+public class MusicPlayerFragment extends DialogFragment implements View.OnClickListener, SeekBar.OnSeekBarChangeListener {
 
-    public enum PlaybackStates {
-        RESET, STARTED, STOPPED, PAUSED, RUNNING
-    }
+    private static final String LOG_TAG = MusicPlayerFragment.class.getSimpleName();
 
-    public static String TRACK_URL = "track_url";
-    private static String LOG_TAG = MusicPlayerFragment.class.getSimpleName();
-    private static String CURRENT_PLAYBACK_STATE = "current_playback_state";
-    private static String CURRENT_TRACK_INDEX = "current_track_index";
-    Intent mServiceIntent = null;
     ArrayList<TrackInfo> mPlayList = new ArrayList<>();
     int mCurrentTrackIndex = -1;
-
-    PlaybackStates mCurrentState = PlaybackStates.RESET;
     String mArtistName = null;
 
     ImageButton mBtnPrev;
@@ -55,25 +43,50 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
     TextView mArtistNameTextView;
     TextView mSongNameTextView;
     ImageView mAlbumThumbnail;
+    SeekBar mSeekBar;
 
-    BroadcastReceiver mReceiver;
+    Intent mServiceIntent = null;
+    LocalBroadcastManager mLocalBroadcastManager;
+
+    private BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            handleIntent(intent);
+        }
+    };
 
     public static MusicPlayerFragment newInstance(ArrayList<TrackInfo> trackInfoResults, int position, String artistName) {
         MusicPlayerFragment f = new MusicPlayerFragment();
         Bundle args = new Bundle();
         args.putParcelableArrayList(TopTenTracksFragment.TRACK_LIST, trackInfoResults);
-        args.putInt(TopTenTracksFragment.TRACK_LIST_POS, position);
+        args.putInt(TopTenTracksFragment.SELECTED_TRACK_INDEX, position);
         args.putString(TopTenTracksFragment.ARTIST_NAME, artistName);
         f.setArguments(args);
         return f;
     }
 
+    public static MusicPlayerFragment newInstance(Bundle args) {
+        MusicPlayerFragment f = new MusicPlayerFragment();
+        f.setArguments(args);
+        return f;
+    }
+
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+
+        super.onCreate(savedInstanceState);
+
+        Log.d(LOG_TAG, "onCreate");
+        mLocalBroadcastManager = LocalBroadcastManager.getInstance(getActivity());
+        mServiceIntent = new Intent(getActivity(), MusicPlayerService.class);
+        getActivity().startService(mServiceIntent);
+    }
 
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-
-        Log.d(LOG_TAG,"onCreateView");
+        Log.d(LOG_TAG, "onCreateView");
         //Inflate the view
         View rootView = inflater.inflate(R.layout.music_player_fragment, container, false);
 
@@ -85,83 +98,102 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
         mArtistNameTextView = (TextView) rootView.findViewById(R.id.text_player_artist_name);
         mSongNameTextView = (TextView) rootView.findViewById(R.id.text_player_song_name);
         mAlbumThumbnail = (ImageView) rootView.findViewById(R.id.image_player_thumbnail);
+        mSeekBar = (SeekBar) rootView.findViewById(R.id.seek_bar_player);
 
         //Set listeners
         mBtnPrev.setOnClickListener(this);
         mBtnPlayPause.setOnClickListener(this);
         mBtnNext.setOnClickListener(this);
+        mSeekBar.setOnSeekBarChangeListener(this);
 
-        //Create a service to play music
-        mServiceIntent = new Intent(getActivity(), MusicPlayerService.class);
-
-        //Initialize member variables
-        Bundle args = getArguments();
-        mPlayList = args.getParcelableArrayList(TopTenTracksFragment.TRACK_LIST);
-        mArtistName = args.getString(TopTenTracksFragment.ARTIST_NAME);
-        if(savedInstanceState==null) {
-            mCurrentTrackIndex = args.getInt(TopTenTracksFragment.TRACK_LIST_POS);
+        //Get arguments
+        if(savedInstanceState == null) {
+            Bundle args = getArguments();
+            mPlayList = args.getParcelableArrayList(TopTenTracksFragment.TRACK_LIST);
+            mArtistName = args.getString(TopTenTracksFragment.ARTIST_NAME);
+            mArtistNameTextView.setText(mArtistName);
+            mCurrentTrackIndex = args.getInt(TopTenTracksFragment.SELECTED_TRACK_INDEX);
         }
         else{
-            mCurrentState = (PlaybackStates)savedInstanceState.getSerializable(CURRENT_PLAYBACK_STATE);
-            mCurrentTrackIndex = (int)savedInstanceState.getSerializable(CURRENT_TRACK_INDEX);
+            mPlayList = savedInstanceState.getParcelableArrayList(TopTenTracksFragment.TRACK_LIST);
+            mArtistName = savedInstanceState.getString(TopTenTracksFragment.ARTIST_NAME);
+            mArtistNameTextView.setText(mArtistName);
+            mCurrentTrackIndex = savedInstanceState.getInt(TopTenTracksFragment.SELECTED_TRACK_INDEX);
         }
 
-        //Update UI with artist name. This will not change during the lifecycle of this fragment instance.
-        mArtistNameTextView.setText(mArtistName);
+        Log.d(LOG_TAG, "OnCreateView: ArtistName" + mArtistName);
+        Log.d(LOG_TAG, "OnCreateView: PlayList");
+        for (TrackInfo t : mPlayList) {
+            Log.d(LOG_TAG, "OnCreateView " + t.getTrackName());
+        }
+        Log.d(LOG_TAG, "OnCreateView Current index " + mCurrentTrackIndex + " = " + mPlayList.get(mCurrentTrackIndex).getTrackName());
 
-        //Register a broadcast receiver to receive an event from the Music Player service
-        mReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
+        updateUI(mPlayList.get(mCurrentTrackIndex));
 
-                if(intent.getAction().equals(MusicPlayerService.PLAYBACK_COMPLETE_BROADCAST_EVENT)){
-                    //Playback completed. Change img to 'Play' button
-                    setImageToPlayButton();
-                    mCurrentState = PlaybackStates.RESET;
-                } else if(intent.getAction().equals(MusicPlayerService.PLAYBACK_ERROR_BROADCAST_EVENT)){
-                    //Playback error. Change img to 'Play' button
-                    setImageToPlayButton();
-                    mCurrentState = PlaybackStates.RESET;
-                }
-            }
-        };
+        if(savedInstanceState==null){
 
-        //Update the rest of the UI
-        updateUI();
+            Bundle extras = new Bundle();
+            extras.putParcelableArrayList(MusicPlayerService.PLAY_LIST_EXTRA, mPlayList);
+            extras.putInt(MusicPlayerService.CURRENT_POSITION_EXTRA, mCurrentTrackIndex);
+            extras.putParcelable(MusicPlayerService.TRACK_EXTRA, mPlayList.get(mCurrentTrackIndex));
+            startIntent(MusicPlayerService.IC_ACTION_PLAY_NEW_TRACK,extras);
+        }
+
         return rootView;
     }
 
-    @Override
-    public void onStart() {
-        super.onStart();
-        //Register the broadcast receiver
-        LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(getActivity());
-        localBroadcastManager.registerReceiver((mReceiver),new IntentFilter(MusicPlayerService.PLAYBACK_COMPLETE_BROADCAST_EVENT));
-        localBroadcastManager.registerReceiver((mReceiver),new IntentFilter(MusicPlayerService.PLAYBACK_ERROR_BROADCAST_EVENT));
-    }
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putSerializable(CURRENT_PLAYBACK_STATE, mCurrentState);
-        outState.putSerializable(CURRENT_TRACK_INDEX, mCurrentTrackIndex);
-        Log.d(LOG_TAG,"onSaveInstanceState");
+
+        outState.putInt(TopTenTracksFragment.SELECTED_TRACK_INDEX, mCurrentTrackIndex);
+        outState.putParcelableArrayList(TopTenTracksFragment.TRACK_LIST, mPlayList);
+        outState.putString(TopTenTracksFragment.ARTIST_NAME,mArtistName);
+
+        Log.d(LOG_TAG, "OnSaveInstance: ArtistName" + mArtistName);
+        Log.d(LOG_TAG, "OnSaveInstance: PlayList");
+        for (TrackInfo t : mPlayList) {
+            Log.d(LOG_TAG, "OnSaveInstance " + t.getTrackName());
+        }
+        Log.d(LOG_TAG, "Current index " + mCurrentTrackIndex + " = " + mPlayList.get(mCurrentTrackIndex).getTrackName());
+
     }
 
-    private void updateUI() {
-        Log.d(LOG_TAG,"updateUI");
-        TrackInfo trackInfo = mPlayList.get(mCurrentTrackIndex);
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        Log.d(LOG_TAG, "onResume");
+        //Register the broadcast receiver
+        mLocalBroadcastManager.registerReceiver((mReceiver), new IntentFilter(MusicPlayerService.PLAYBACK_COMPLETE_BROADCAST_EVENT));
+        mLocalBroadcastManager.registerReceiver((mReceiver), new IntentFilter(MusicPlayerService.PLAYBACK_ERROR_BROADCAST_EVENT));
+        mLocalBroadcastManager.registerReceiver((mReceiver), new IntentFilter(MusicPlayerService.PLAYBACK_PROGRESS_BROADCAST_EVENT));
+        mLocalBroadcastManager.registerReceiver((mReceiver), new IntentFilter(MusicPlayerService.PLAYBACK_PAUSE_BROADCAST_EVENT));
+        mLocalBroadcastManager.registerReceiver((mReceiver), new IntentFilter(MusicPlayerService.PLAYBACK_RESUME_BROADCAST_EVENT));
+        mLocalBroadcastManager.registerReceiver((mReceiver), new IntentFilter(MusicPlayerService.PLAYBACK_NEW_TRACK_BROADCAST_EVENT));
+    }
+
+    @Override
+    public void onPause() {
+        Log.d(LOG_TAG, "onPause");
+        super.onPause();
+        mLocalBroadcastManager.unregisterReceiver(mReceiver);
+    }
+
+    @Override
+    public void onDestroy() {
+        Log.d(LOG_TAG, "onDestroy");
+        super.onDestroy();
+    }
+
+    private void updateUI(TrackInfo trackInfo) {
+        Log.d(LOG_TAG, "updateUI");
         mAlbumNameTextView.setText(trackInfo.getAlbumName());
         mSongNameTextView.setText(trackInfo.getTrackName());
         String imageUrl = trackInfo.getGetAlbumThumbnailLrgUrl();
         if ((imageUrl != null) && (!imageUrl.isEmpty())) {
             Picasso.with(getActivity()).load(imageUrl).into(mAlbumThumbnail);
-        }
-        if(mCurrentState==PlaybackStates.RUNNING){
-            setImageToPauseButton();
-        }
-        else{
-            setImageToPlayButton();
         }
     }
 
@@ -176,199 +208,27 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
 
     @Override
     public void onClick(View view) {
+
         switch (view.getId()) {
-            case R.id.btn_media_prev: {
-                int index = getPrevTrack();
-                if (mCurrentState == PlaybackStates.RUNNING) {
-                    playAudioTrack(index);
-                }
-                else{
-                    mCurrentState = PlaybackStates.RESET;
-                }
-                mCurrentTrackIndex = index;
-                updateUI();
-            }
-            break;
+            case R.id.btn_media_prev:
+                startIntent(MusicPlayerService.IC_ACTION_PLAY_PREV);
+                break;
 
             case R.id.btn_media_play_pause:
-                playPauseAudioTrack(mCurrentTrackIndex);
+                Bundle extras = new Bundle();
+                extras.putParcelable(MusicPlayerService.TRACK_EXTRA, mPlayList.get(mCurrentTrackIndex));
+                startIntent(MusicPlayerService.IC_ACTION_PLAY, extras);
                 break;
 
-            case R.id.btn_media_next: {
-                int index = getNextTrack();
-                if (mCurrentState == PlaybackStates.RUNNING) {
-                    playAudioTrack(index);
-                }
-                else{
-                    mCurrentState = PlaybackStates.RESET;
-                }
-                mCurrentTrackIndex = index;
-                updateUI();
-            }
-            break;
+            case R.id.btn_media_next:
+                startIntent(MusicPlayerService.IC_ACTION_PLAY_NEXT);
+                break;
 
             default:
                 break;
         }
     }
 
-    void playPauseAudioTrack(int position) {
-
-        switch (mCurrentState) {
-
-            case PAUSED:
-                //Resume it
-                resumeAudioTrack();
-                break;
-
-            case RUNNING:
-                // Pause it
-                pauseAudioTrack();
-                break;
-
-            case STOPPED:
-                // Start service
-                restartAudioTrack();
-                break;
-
-            case RESET:
-            default:
-                //Play audio track
-                playAudioTrack(mCurrentTrackIndex);
-                break;
-        }
-
-    }
-
-    private void restartAudioTrack() {
-        Log.d(LOG_TAG, "restartAudioTrack");
-        mServiceIntent.setAction(MusicPlayerService.IC_ACTION_RESTART);
-        mServiceIntent.putExtra(TRACK_URL, getTrackUrl(mCurrentTrackIndex));
-        try {
-            getActivity().startService(mServiceIntent);
-        } catch (Exception e) {
-            Log.e(LOG_TAG, e.getMessage());
-            Toast.makeText(getActivity(), R.string.playback_error, Toast.LENGTH_SHORT).show();
-        } finally {
-            mCurrentState = PlaybackStates.RUNNING;
-            //Change button icon to 'pause'
-            setImageToPauseButton();
-        }
-    }
-
-    private void playAudioTrack(int position) {
-        Log.d(LOG_TAG, "playAudioTrack");
-        //This will reset the media player and start all over again
-        mServiceIntent.setAction(MusicPlayerService.IC_ACTION_PLAY);
-        mServiceIntent.putExtra(TRACK_URL, getTrackUrl(position));
-        try {
-            getActivity().startService(mServiceIntent);
-        } catch (Exception e) {
-            Log.e(LOG_TAG, e.getMessage());
-            Toast.makeText(getActivity(), R.string.playback_error, Toast.LENGTH_SHORT).show();
-        } finally {
-            mCurrentState = PlaybackStates.RUNNING;
-            //Change button icon to 'pause'
-            setImageToPauseButton();
-        }
-    }
-
-    void pauseAudioTrack() {
-        mServiceIntent.setAction(MusicPlayerService.IC_ACTION_PAUSE);
-
-        try {
-            getActivity().startService(mServiceIntent);
-        } catch (Exception e) {
-            Log.e(LOG_TAG, e.getMessage());
-            Toast.makeText(getActivity(), R.string.playback_error, Toast.LENGTH_SHORT).show();
-        } finally {
-            mCurrentState = PlaybackStates.PAUSED;
-            //Change button icon to 'play'
-            setImageToPlayButton();
-        }
-    }
-
-    void resumeAudioTrack() {
-        mServiceIntent.setAction(MusicPlayerService.IC_ACTION_RESUME);
-
-        try {
-            getActivity().startService(mServiceIntent);
-        } catch (Exception e) {
-            Log.e(LOG_TAG, e.getMessage());
-            Toast.makeText(getActivity(), R.string.playback_error, Toast.LENGTH_SHORT).show();
-        } finally {
-            mCurrentState = PlaybackStates.RUNNING;
-            //Change button icon to 'pause'
-            setImageToPauseButton();
-        }
-    }
-
-    void stopAudioTrack() {
-        mServiceIntent.setAction(MusicPlayerService.IC_ACTION_STOP);
-
-        try {
-            getActivity().startService(mServiceIntent);
-        } catch (Exception e) {
-            Log.e(LOG_TAG, e.getMessage());
-            Toast.makeText(getActivity(), R.string.playback_error, Toast.LENGTH_SHORT).show();
-        } finally {
-            mCurrentState = PlaybackStates.STOPPED;
-            //Change button icon to 'play'
-            setImageToPlayButton();
-        }
-    }
-
-    int getPrevTrack() {
-        //Get the prev track index
-        int prevTrackIndex = mCurrentTrackIndex - 1;
-        int lastTrackIndex = mPlayList.size() - 1;
-        //Loop over to the last track if there is no previous track
-        prevTrackIndex = (prevTrackIndex >= 0) ? prevTrackIndex : lastTrackIndex;
-        return prevTrackIndex;
-    }
-
-    int getNextTrack() {
-        //Get next track index
-        int lastTrackIndex = mPlayList.size() - 1;
-        int nextTrackIndex = mCurrentTrackIndex + 1;
-        //Loop over to the first track if list is exhausted
-        nextTrackIndex = (nextTrackIndex > lastTrackIndex) ? 0 : nextTrackIndex;
-        return nextTrackIndex;
-    }
-
-    void playPrevTrack() {
-        //Get the prev track index
-        int prevTrackIndex = mCurrentTrackIndex - 1;
-        int lastTrackIndex = mPlayList.size() - 1;
-        //Loop over to the last track if there is no previous track
-        prevTrackIndex = (prevTrackIndex >= 0) ? prevTrackIndex : lastTrackIndex;
-        //Update current state to RESET to reset the state machine to initial state
-        mCurrentState = PlaybackStates.RESET;
-        //Play prev track
-        playAudioTrack(prevTrackIndex);
-        //update current index
-        mCurrentTrackIndex = prevTrackIndex;
-        updateUI();
-    }
-
-    void playNextTrack() {
-        //Get next track index
-        int lastTrackIndex = mPlayList.size() - 1;
-        int nextTrackIndex = mCurrentTrackIndex + 1;
-        //Loop over to the first track if list is exhausted
-        nextTrackIndex = (nextTrackIndex > lastTrackIndex) ? 0 : nextTrackIndex;
-        //Update current state to RESET to reset the state machine to initial state
-        mCurrentState = PlaybackStates.RESET;
-        //Play the next track
-        playAudioTrack(nextTrackIndex);
-
-        mCurrentTrackIndex = nextTrackIndex;
-        updateUI();
-    }
-
-    String getTrackUrl(int position) {
-        return mPlayList.get(position).getTrackUrl();
-    }
 
     void setImageToPlayButton() {
         mBtnPlayPause.setImageResource(android.R.drawable.ic_media_play);
@@ -377,4 +237,79 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
     void setImageToPauseButton() {
         mBtnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
     }
+
+    void handleIntent(Intent intent) {
+        if (intent.getAction().equals(MusicPlayerService.PLAYBACK_COMPLETE_BROADCAST_EVENT)) {
+            Log.d(LOG_TAG, "PLAYBACK_COMPLETE_BROADCAST_EVENT");
+
+            mSeekBar.setProgress(mSeekBar.getMax());
+            setImageToPlayButton();
+
+        } else if (intent.getAction().equals(MusicPlayerService.PLAYBACK_PROGRESS_BROADCAST_EVENT)) {
+
+            int trackLength = intent.getIntExtra(MusicPlayerService.TRACK_DURATION_EXTRA, 0);
+            int cur = intent.getIntExtra(MusicPlayerService.CURRENT_POSITION_EXTRA, 0);
+
+            mSeekBar.setMax(trackLength);
+            mSeekBar.setProgress(cur);
+
+            setImageToPauseButton();
+
+        } else if (intent.getAction().equals(MusicPlayerService.PLAYBACK_PAUSE_BROADCAST_EVENT)) {
+
+            setImageToPlayButton();
+
+        } else if (intent.getAction().equals(MusicPlayerService.PLAYBACK_ERROR_BROADCAST_EVENT)) {
+
+            setImageToPlayButton();
+
+        } else if (intent.getAction().equals(MusicPlayerService.PLAYBACK_RESUME_BROADCAST_EVENT)) {
+
+            setImageToPauseButton();
+
+        } else if (intent.getAction().equals(MusicPlayerService.PLAYBACK_NEW_TRACK_BROADCAST_EVENT)) {
+
+            setImageToPauseButton();
+
+            TrackInfo nowPlaying = intent.getParcelableExtra(MusicPlayerService.NOW_PLAYING_EXTRA);
+            int newIndex = intent.getIntExtra(MusicPlayerService.CURRENT_POSITION_EXTRA,-1);
+            updateUI(nowPlaying);
+            mCurrentTrackIndex = newIndex;
+        }
+
+    }
+
+    @Override
+    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+
+        if (fromUser) {
+            Bundle args = new Bundle();
+            args.putInt(MusicPlayerService.CURRENT_POSITION_EXTRA,progress);
+            startIntent(MusicPlayerService.IC_ACTION_SEEK, args);
+        }
+    }
+
+    @Override
+    public void onStartTrackingTouch(SeekBar seekBar) {
+
+    }
+
+    @Override
+    public void onStopTrackingTouch(SeekBar seekBar) {
+
+    }
+
+    void startIntent(String action, Bundle extras){
+        mServiceIntent.setAction(action);
+        if(extras!=null){
+            mServiceIntent.putExtras(extras);
+        }
+        getActivity().startService(mServiceIntent);
+    }
+
+    void startIntent(String action){
+        mServiceIntent.setAction(action);
+        getActivity().startService(mServiceIntent);
+    }
+
 }

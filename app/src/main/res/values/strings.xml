@@ -8,4 +8,5 @@
     <string name="tracks_not_found">Sorry, we were unable to get this data. Please try again later.</string>
     <string name="search_hint">Search</string>
     <string name="playback_error">Sorry, something went wrong. Please try again later</string>
+    <string name="ticker_text">Now playing : </string>
 </resources>

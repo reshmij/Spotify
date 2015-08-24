@@ -39,7 +39,7 @@ public class MyTopTenTracksActivity extends AppCompatActivity {
 
     private static final String LOG_TAG = MyTopTenTracksActivity.class.getSimpleName();
     private static final String TRACK_LIST = "trackList";
-    private static final String TRACK_LIST_POS = "trackListPosition";
+    private static final String SELECTED_TRACK_INDEX_POS = "trackListPosition";
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -56,7 +56,7 @@ public class MyTopTenTracksActivity extends AppCompatActivity {
         if(savedInstanceState != null){
             //Get the last saved list of Top 10 tracts
             mTrackInfoResults = savedInstanceState.getParcelableArrayList(TRACK_LIST);
-            selectPosition = savedInstanceState.getInt(TRACK_LIST_POS);
+            selectPosition = savedInstanceState.getInt(SELECTED_TRACK_INDEX_POS);
         }
 
         // Get a handle to the list view

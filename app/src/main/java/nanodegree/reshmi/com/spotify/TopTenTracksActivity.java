@@ -74,7 +74,7 @@ public class TopTenTracksActivity extends AppCompatActivity implements TopTenTra
         //So show the Music Player Fragment embedded within an activity
         Intent intent = new Intent(this, MusicPlayerActivity.class);
         intent.putExtra(TopTenTracksFragment.TRACK_LIST,trackInfoResults);
-        intent.putExtra(TopTenTracksFragment.TRACK_LIST_POS,position);
+        intent.putExtra(TopTenTracksFragment.SELECTED_TRACK_INDEX,position);
         intent.putExtra(TopTenTracksFragment.ARTIST_NAME,artistName);
         startActivity(intent);
     }

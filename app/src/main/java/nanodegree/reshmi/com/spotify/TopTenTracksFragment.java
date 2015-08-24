@@ -44,7 +44,7 @@ public class TopTenTracksFragment extends Fragment {
 
     private static final String LOG_TAG = TopTenTracksFragment.class.getSimpleName();
     public static final String TRACK_LIST = "trackList";
-    public static final String TRACK_LIST_POS = "trackListPosition";
+    public static final String SELECTED_TRACK_INDEX = "trackListPosition";
     public static final String ARTIST_NAME = "artistName";
     private OnTrackSelectedListener mListener = null;
 
@@ -75,7 +75,7 @@ public class TopTenTracksFragment extends Fragment {
         if(savedInstanceState != null){
             //Get the last saved list of Top 10 tracts
             mTrackInfoResults = savedInstanceState.getParcelableArrayList(TRACK_LIST);
-            selectPosition = savedInstanceState.getInt(TRACK_LIST_POS);
+            selectPosition = savedInstanceState.getInt(SELECTED_TRACK_INDEX);
         }
 
         // Get a handle to the list view

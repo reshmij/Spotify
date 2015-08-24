@@ -77,6 +77,19 @@ public class TrackInfo implements Parcelable {
         }
     };
 
+    @Override
+    public boolean equals(Object o) {
 
+        //Override the equals method.
+        TrackInfo in = (TrackInfo)o;
+        if(in.getTrackName().equals(this.trackName)&&
+           in.getAlbumName().equals(this.albumName)&&
+           in.getTrackUrl().equals(this.trackUrl)){
+            return true;
+        }
+        else{
+            return false;
+        }
 
+    }
 }

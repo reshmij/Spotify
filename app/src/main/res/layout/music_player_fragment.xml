@@ -21,12 +21,10 @@
         android:text="Album Name" />
 
     <ImageView
+        style="@style/ThumbnailImgViewStyle"
         android:id="@+id/image_player_thumbnail"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
         android:layout_weight="1"
-        android:scaleType="fitCenter"
         android:src="@drawable/abc_ic_menu_cut_mtrl_alpha" />
 
     <TextView
@@ -37,14 +35,10 @@
         android:text="Song Name" />
 
     <SeekBar
-        android:id="@+id/seek_bar"
+        android:id="@+id/seek_bar_player"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
-        android:layout_below="@+id/textView1"
-        android:layout_marginTop="26dp"
-        android:max="100" />
-
+        />
 
     <LinearLayout
         android:layout_width="wrap_content"
