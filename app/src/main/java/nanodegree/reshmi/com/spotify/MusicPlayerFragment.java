@@ -31,6 +31,8 @@ import model.TrackInfo;
 public class MusicPlayerFragment extends DialogFragment implements View.OnClickListener, SeekBar.OnSeekBarChangeListener {
 
     private static final String LOG_TAG = MusicPlayerFragment.class.getSimpleName();
+    public static final int INVALID_LENGTH = -1;
+    public static final int INVALID_POSITION = -1;
 
     ArrayList<TrackInfo> mPlayList = new ArrayList<>();
     int mCurrentTrackIndex = -1;
@@ -55,12 +57,16 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
         }
     };
 
-    public static MusicPlayerFragment newInstance(ArrayList<TrackInfo> trackInfoResults, int position, String artistName) {
+    public static MusicPlayerFragment newInstance(ArrayList<TrackInfo> trackInfoResults, int position, String artistName, TrackInfo nowPlaying) {
         MusicPlayerFragment f = new MusicPlayerFragment();
         Bundle args = new Bundle();
         args.putParcelableArrayList(TopTenTracksFragment.TRACK_LIST, trackInfoResults);
         args.putInt(TopTenTracksFragment.SELECTED_TRACK_INDEX, position);
         args.putString(TopTenTracksFragment.ARTIST_NAME, artistName);
+
+        if(nowPlaying!=null){
+            args.putParcelable(TopTenTracksFragment.NOW_PLAYING_TRACK, nowPlaying);
+        }
         f.setArguments(args);
         return f;
     }
@@ -87,6 +93,8 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         Log.d(LOG_TAG, "onCreateView");
+        TrackInfo nowPlayingTrack = null;
+
         //Inflate the view
         View rootView = inflater.inflate(R.layout.music_player_fragment, container, false);
 
@@ -113,6 +121,7 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
             mArtistName = args.getString(TopTenTracksFragment.ARTIST_NAME);
             mArtistNameTextView.setText(mArtistName);
             mCurrentTrackIndex = args.getInt(TopTenTracksFragment.SELECTED_TRACK_INDEX);
+            nowPlayingTrack = args.getParcelable(TopTenTracksFragment.NOW_PLAYING_TRACK);
         }
         else{
             mPlayList = savedInstanceState.getParcelableArrayList(TopTenTracksFragment.TRACK_LIST);
@@ -132,11 +141,15 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
 
         if(savedInstanceState==null){
 
-            Bundle extras = new Bundle();
-            extras.putParcelableArrayList(MusicPlayerService.PLAY_LIST_EXTRA, mPlayList);
-            extras.putInt(MusicPlayerService.CURRENT_POSITION_EXTRA, mCurrentTrackIndex);
-            extras.putParcelable(MusicPlayerService.TRACK_EXTRA, mPlayList.get(mCurrentTrackIndex));
-            startIntent(MusicPlayerService.IC_ACTION_PLAY_NEW_TRACK,extras);
+            if(nowPlayingTrack==null) {
+
+                Bundle extras = new Bundle();
+                extras.putParcelableArrayList(MusicPlayerService.PLAY_LIST_EXTRA, mPlayList);
+                extras.putInt(MusicPlayerService.CURRENT_POSITION_EXTRA, mCurrentTrackIndex);
+                extras.putParcelable(MusicPlayerService.TRACK_EXTRA, mPlayList.get(mCurrentTrackIndex));
+                extras.putString(MusicPlayerService.ARTIST_NAME_EXTRA, mArtistName);
+                startIntent(MusicPlayerService.IC_ACTION_PLAY_NEW_TRACK, extras);
+            }
         }
 
         return rootView;
@@ -157,7 +170,19 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
             Log.d(LOG_TAG, "OnSaveInstance " + t.getTrackName());
         }
         Log.d(LOG_TAG, "Current index " + mCurrentTrackIndex + " = " + mPlayList.get(mCurrentTrackIndex).getTrackName());
+    }
 
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        if(getShowsDialog()){
+
+            int layout_width = getResources().getDimensionPixelSize(R.dimen.popup_width);
+            int layout_height = getResources().getDimensionPixelSize(R.dimen.popup_height);
+
+            getDialog().getWindow().setLayout(layout_width,layout_height);
+        }
     }
 
     @Override
@@ -231,6 +256,7 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
 
 
     void setImageToPlayButton() {
+
         mBtnPlayPause.setImageResource(android.R.drawable.ic_media_play);
     }
 
@@ -257,6 +283,12 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
 
         } else if (intent.getAction().equals(MusicPlayerService.PLAYBACK_PAUSE_BROADCAST_EVENT)) {
 
+            int trackLength = intent.getIntExtra(MusicPlayerService.TRACK_DURATION_EXTRA, 0);
+            int cur = intent.getIntExtra(MusicPlayerService.CURRENT_POSITION_EXTRA, 0);
+
+            mSeekBar.setMax(trackLength);
+            mSeekBar.setProgress(cur);
+
             setImageToPlayButton();
 
         } else if (intent.getAction().equals(MusicPlayerService.PLAYBACK_ERROR_BROADCAST_EVENT)) {
@@ -276,7 +308,6 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
             updateUI(nowPlaying);
             mCurrentTrackIndex = newIndex;
         }
-
     }
 
     @Override
@@ -311,5 +342,4 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
         mServiceIntent.setAction(action);
         getActivity().startService(mServiceIntent);
     }
-
 }

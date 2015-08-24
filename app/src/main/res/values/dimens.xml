@@ -5,4 +5,6 @@
     <dimen name="activity_horizontal_margin">16dp</dimen>
     <dimen name="activity_vertical_margin">16dp</dimen>
     <dimen name="thumbnail_dimen">55dp</dimen>
+    <dimen name="popup_width">500px</dimen>
+    <dimen name="popup_height">500px</dimen>
 </resources>

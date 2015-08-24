@@ -6,9 +6,9 @@
     </style>
 
     <style name="ThumbnailImgViewStyle" >
-        <item name="android:layout_width">300dp</item>
-        <item name="android:layout_height">300dp</item>
-        <item name="android:scaleType">fitXY</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:scaleType">fitCenter</item>
     </style>
 
 </resources>

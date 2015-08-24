@@ -9,7 +9,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
-import android.os.Binder;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -29,6 +28,7 @@ import model.TrackInfo;
  */
 public class MusicPlayerService extends Service implements MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener, MediaPlayer.OnSeekCompleteListener, MediaPlayer.OnInfoListener, MediaPlayer.OnBufferingUpdateListener {
 
+    public static final String IC_ACTION_INIT = "initMusic";
     public static final String IC_ACTION_PLAY = "playMusic";
     public static final String IC_ACTION_PLAY_PREV = "playPrev";
     public static final String IC_ACTION_PLAY_NEXT = "playNext";
@@ -45,6 +45,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
     public static final String PLAY_LIST_EXTRA = "play_list_extra";
     public static final String SELECTED_INDEX_EXTRA = "selected_index_extra";
     public static final String NOW_PLAYING_EXTRA = "now_playing_extra";
+    public static final String ARTIST_NAME_EXTRA = "artist_name_extra";
     public static final String TRACK_EXTRA = "now_playing_extra";
     public static final String CURRENT_POSITION_EXTRA = "current_playback_pos";
     public static final String TRACK_DURATION_EXTRA = "track_duration";
@@ -54,6 +55,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
 
     private static final String LOG_TAG = MusicPlayerService.class.getSimpleName();
     private static final int NOTIFICATION_ID = 0x55;
+
 
     enum PlaybackStates {
         RESET,
@@ -70,88 +72,77 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
     int mCurrentTrackIndex;
     PlaybackStates mPlaybackState = PlaybackStates.RESET;
     TrackInfo mNowPlayingTrack = null;
-
+    String mArtistName = null;
+    int mNowPlayingTrackDuration = -1;
     @Override
     public void onCreate() {
         setListeners();
-        mMediaPlayer.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
+
+        if (mMediaPlayer != null) {
+            mMediaPlayer.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
+        }
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 
-        String action = (intent != null) ? intent.getAction() : null;
-        if (action == null) {
-            //Do nothing
-        } else if (action.equals(IC_ACTION_PLAY)) {
+        try {
+            String action = (intent != null) ? intent.getAction() : null;
+            if (action == null) {
+                //Do nothing
+            } else if (action.equals(IC_ACTION_INIT)) {
+                Bundle extras = intent.getExtras();
+                ArrayList<TrackInfo> list = extras.getParcelableArrayList(PLAY_LIST_EXTRA);
+                int selectedIndex = extras.getInt(CURRENT_POSITION_EXTRA);
+                String artistName = extras.getString(ARTIST_NAME_EXTRA);
 
-            //handlePlayback(intent);
+                setPlayList(list);
+                setSelectedTrackIndex(selectedIndex);
+                setArtistName(artistName);
 
-            switch (mPlaybackState) {
+            } else if (action.equals(IC_ACTION_PLAY)) {
 
-                case RESET: {
-                    if (mMediaPlayer != null) {
+                switch (mPlaybackState) {
 
-                        if (mMediaPlayer.isPlaying()) {
-                            mMediaPlayer.stop();
-                        }
+                    case RESET: {
+                        if (mMediaPlayer != null) {
 
-                        Bundle extras = intent.getExtras();
-                        if (extras != null) {
-                            ArrayList<TrackInfo> list = extras.getParcelableArrayList(PLAY_LIST_EXTRA);
-                            int selectedIndex = extras.getInt(CURRENT_POSITION_EXTRA);
-
-                            setPlayList(list);
-                            setSelectedTrackIndex(selectedIndex);
-
-                            preparePlayer();
-
+                            Bundle extras = intent.getExtras();
+                            playNew(extras);
                         }
                     }
-                }
-                break;
-
-                case PLAYING:
-                    pauseAudio();
                     break;
 
-                case STOPPED:
-                    restartAudio();
-                    break;
+                    case PLAYING:
+                        pauseAudio();
+                        break;
 
-                case PAUSED:
-                    resumeAudio();
-                    break;
+                    case STOPPED:
+                        preparePlayer();
+                        break;
 
-            }
-
-        } else if (action.equals(IC_ACTION_PLAY_NEXT)) {
-            playNext();
-        } else if (action.equals(IC_ACTION_PLAY_PREV)) {
-            playPrev();
-        } else if (action.equals(IC_ACTION_SEEK)) {
-            int position = intent.getIntExtra(MusicPlayerService.CURRENT_POSITION_EXTRA,0);
-            seekTo(position);
-        } else if(action.equals(IC_ACTION_PLAY_NEW_TRACK)){
-
-            if (mMediaPlayer != null) {
-
-                if (mMediaPlayer.isPlaying()) {
-                    mMediaPlayer.stop();
+                    case PAUSED:
+                        resumeAudio();
+                        break;
                 }
 
+            } else if (action.equals(IC_ACTION_PLAY_NEXT)) {
+                playNext();
+
+            } else if (action.equals(IC_ACTION_PLAY_PREV)) {
+                playPrev();
+
+            } else if (action.equals(IC_ACTION_SEEK)) {
+                int position = intent.getIntExtra(MusicPlayerService.CURRENT_POSITION_EXTRA, 0);
+                seekTo(position);
+
+            } else if (action.equals(IC_ACTION_PLAY_NEW_TRACK)) {
                 Bundle extras = intent.getExtras();
-                if (extras != null) {
-                    ArrayList<TrackInfo> list = extras.getParcelableArrayList(PLAY_LIST_EXTRA);
-                    int selectedIndex = extras.getInt(CURRENT_POSITION_EXTRA);
-
-                    setPlayList(list);
-                    setSelectedTrackIndex(selectedIndex);
-
-                    preparePlayer();
-
-                }
+                playNew(extras);
             }
+
+        } catch (Exception e) {
+            Log.e(LOG_TAG, e.getMessage());
         }
 
         return Service.START_STICKY;
@@ -167,36 +158,46 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
     public void onDestroy() {
         super.onDestroy();
 
-        cancelNotification();
-        cancelSeekBarUpdateHandler();
-        mNowPlayingTrack = null;
+        try {
+            cancelNotification();
+            cancelSeekBarUpdateHandler();
+            mNowPlayingTrack = null;
+            mPlaybackState = PlaybackStates.RESET;
 
-        if (mMediaPlayer != null) {
-            if (mMediaPlayer.isPlaying()) {
-                mMediaPlayer.stop();
+            if (mMediaPlayer != null) {
+                if (mMediaPlayer.isPlaying()) {
+                    mMediaPlayer.stop();
+                }
+                mMediaPlayer.reset();
+                mMediaPlayer.release();
+                mMediaPlayer = null;
             }
-            mMediaPlayer.release();
-            mMediaPlayer = null;
+        } catch (Exception e) {
+            Log.e(LOG_TAG, e.getMessage());
         }
     }
 
     private void setListeners() {
-        mMediaPlayer.setOnCompletionListener(this);
-        mMediaPlayer.setOnErrorListener(this);
-        mMediaPlayer.setOnPreparedListener(this);
-        mMediaPlayer.setOnBufferingUpdateListener(this);
-        mMediaPlayer.setOnSeekCompleteListener(this);
-        mMediaPlayer.setOnInfoListener(this);
+        if (mMediaPlayer != null) {
+            mMediaPlayer.setOnCompletionListener(this);
+            mMediaPlayer.setOnErrorListener(this);
+            mMediaPlayer.setOnPreparedListener(this);
+            mMediaPlayer.setOnBufferingUpdateListener(this);
+            mMediaPlayer.setOnSeekCompleteListener(this);
+            mMediaPlayer.setOnInfoListener(this);
+        }
     }
 
     @Override
     public boolean onError(MediaPlayer mediaPlayer, int what, int extra) {
 
-        Toast.makeText(this, R.string.playback_error, Toast.LENGTH_SHORT).show();
-        Log.e(LOG_TAG, "Error Code:" + what + " extra:" + extra);
-        mMediaPlayer.reset();
-        mPlaybackState = PlaybackStates.RESET;
-        broadcastEvent(PLAYBACK_ERROR_BROADCAST_EVENT, null);
+        if (mediaPlayer != null) {
+            Toast.makeText(this, R.string.playback_error, Toast.LENGTH_SHORT).show();
+            Log.e(LOG_TAG, "Error Code:" + what + " extra:" + extra);
+            mMediaPlayer.reset();
+            mPlaybackState = PlaybackStates.RESET;
+            broadcastEvent(PLAYBACK_ERROR_BROADCAST_EVENT, null);
+        }
         return false;
     }
 
@@ -213,11 +214,9 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
     @Override
     public void onCompletion(MediaPlayer mediaPlayer) {
         stopAudio();
-        stopSelf();
         cancelSeekBarUpdateHandler();
         //Broadcast this event so UI can be updated ( Pause button -> Play button)
         broadcastEvent(PLAYBACK_COMPLETE_BROADCAST_EVENT, null);
-
     }
 
     @Override
@@ -230,6 +229,10 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
         setupSeekBarUpdateHandler();
     }
 
+    public void setArtistName(String artistName) {
+        mArtistName = artistName;
+    }
+
     public void setPlayList(ArrayList<TrackInfo> list) {
         mPlayList = list;
     }
@@ -238,57 +241,28 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
         mCurrentTrackIndex = currentPosition;
     }
 
-    private void handlePlayback(Intent intent ){
-        switch (mPlaybackState) {
+    public void playNew(Bundle extras) {
+        try {
+            if (extras != null) {
 
-            case RESET: {
-                if (mMediaPlayer != null) {
-
-                    if (mMediaPlayer.isPlaying()) {
-                        mMediaPlayer.stop();
-                    }
-
-                    Bundle extras = intent.getExtras();
-                    if (extras != null) {
-                        ArrayList<TrackInfo> list = extras.getParcelableArrayList(PLAY_LIST_EXTRA);
-                        int selectedIndex = extras.getInt(CURRENT_POSITION_EXTRA);
-
-                        setPlayList(list);
-                        setSelectedTrackIndex(selectedIndex);
-
-                        preparePlayer();
-
-                    }
+                if (mMediaPlayer.isPlaying()) {
+                    mMediaPlayer.stop();
                 }
+
+                ArrayList<TrackInfo> list = extras.getParcelableArrayList(PLAY_LIST_EXTRA);
+                int selectedIndex = extras.getInt(CURRENT_POSITION_EXTRA);
+                String artistName = extras.getString(ARTIST_NAME_EXTRA);
+
+                setPlayList(list);
+                setSelectedTrackIndex(selectedIndex);
+                setArtistName(artistName);
+
+                preparePlayer();
+
             }
-            break;
-
-            case PLAYING:
-                Bundle extras = intent.getExtras();
-                if(extras == null){
-                    pauseAudio();
-                }
-                else{
-                    ArrayList<TrackInfo> list = extras.getParcelableArrayList(PLAY_LIST_EXTRA);
-                    int selectedIndex = extras.getInt(CURRENT_POSITION_EXTRA);
-
-                    setPlayList(list);
-                    setSelectedTrackIndex(selectedIndex);
-
-                    preparePlayer();
-                }
-                break;
-
-            case STOPPED:
-                restartAudio();
-                break;
-
-            case PAUSED:
-                resumeAudio();
-                break;
-
+        } catch (Exception e) {
+            Log.e(LOG_TAG, e.getMessage());
         }
-
     }
 
     public void playNext() {
@@ -296,8 +270,8 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
             int next = getNextTrackIndex();
             setCurrentTrackIndex(next);
             preparePlayer();
-        }catch(Exception e){
-            Log.e(LOG_TAG,e.getMessage());
+        } catch (Exception e) {
+            Log.e(LOG_TAG, e.getMessage());
         }
     }
 
@@ -306,7 +280,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
             int prev = getPrevTrackIndex();
             setCurrentTrackIndex(prev);
             preparePlayer();
-        }catch(Exception e){
+        } catch (Exception e) {
 
         }
     }
@@ -356,50 +330,85 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
     }
 
     public void playAudio() {
-        if (mMediaPlayer != null) {
-            mMediaPlayer.start();
 
-            mNowPlayingTrack = mPlayList.get(mCurrentTrackIndex);
-            Bundle args = new Bundle();
-            args.putParcelable(NOW_PLAYING_EXTRA, mNowPlayingTrack);
-            args.putInt(CURRENT_POSITION_EXTRA, mCurrentTrackIndex);
-            broadcastEvent(PLAYBACK_NEW_TRACK_BROADCAST_EVENT, args);
-            setupSeekBarUpdateHandler();
-            initNotification();
-            mPlaybackState = PlaybackStates.PLAYING;
+        try {
+            if (mMediaPlayer != null) {
+                mMediaPlayer.start();
+
+                mNowPlayingTrack = mPlayList.get(mCurrentTrackIndex);
+                Bundle args = new Bundle();
+                args.putParcelable(NOW_PLAYING_EXTRA, mNowPlayingTrack);
+                args.putInt(CURRENT_POSITION_EXTRA, mCurrentTrackIndex);
+                args.putString(ARTIST_NAME_EXTRA, mArtistName);
+                broadcastEvent(PLAYBACK_NEW_TRACK_BROADCAST_EVENT, args);
+                setupSeekBarUpdateHandler();
+                setupAsForeground();
+                mPlaybackState = PlaybackStates.PLAYING;
+            }
+
+        } catch (Exception e) {
+            Log.e(LOG_TAG, e.getMessage());
         }
     }
 
     public void pauseAudio() {
-        if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
-            mMediaPlayer.pause();
 
-            broadcastEvent(PLAYBACK_PAUSE_BROADCAST_EVENT, null);
-            mPlaybackState = PlaybackStates.PAUSED;
+        try {
+            if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
+                mMediaPlayer.pause();
+
+                stopForeground(false);
+
+                int curPosition = mMediaPlayer.getCurrentPosition();
+                int trackDuration = mNowPlayingTrackDuration;
+
+                Bundle extras = new Bundle();
+                extras.putInt(CURRENT_POSITION_EXTRA, curPosition);
+                extras.putInt(TRACK_DURATION_EXTRA, trackDuration);
+                extras.putParcelable(NOW_PLAYING_EXTRA, mPlayList.get(mCurrentTrackIndex));
+                extras.putParcelableArrayList(PLAY_LIST_EXTRA, mPlayList);
+                extras.putInt(SELECTED_INDEX_EXTRA, mCurrentTrackIndex);
+                extras.putString(ARTIST_NAME_EXTRA, mArtistName);
+
+                broadcastEvent(PLAYBACK_PAUSE_BROADCAST_EVENT, extras);
+                mPlaybackState = PlaybackStates.PAUSED;
+            }
+        } catch (Exception e) {
+            Log.e(LOG_TAG, e.getMessage());
         }
     }
 
     public void stopAudio() {
-        if (mMediaPlayer != null) {
-            mMediaPlayer.stop();
-            stopForeground(true);
-            mPlaybackState = PlaybackStates.STOPPED;
+
+        try {
+            if (mMediaPlayer != null) {
+
+                if (mMediaPlayer.isPlaying()) {
+                    mMediaPlayer.stop();
+                }
+                stopForeground(true);
+                mPlaybackState = PlaybackStates.STOPPED;
+            }
+        } catch (Exception e) {
+            Log.e(LOG_TAG, e.getMessage());
         }
     }
 
     public void resumeAudio() {
-        if (mMediaPlayer != null && !mMediaPlayer.isPlaying()) {
-            mMediaPlayer.start();
-            mPlaybackState = PlaybackStates.PLAYING;
-            broadcastEvent(PLAYBACK_RESUME_BROADCAST_EVENT, null);
+
+        try {
+            if (mMediaPlayer != null && !mMediaPlayer.isPlaying()) {
+                mMediaPlayer.start();
+                mPlaybackState = PlaybackStates.PLAYING;
+                setupAsForeground();
+                broadcastEvent(PLAYBACK_RESUME_BROADCAST_EVENT, null);
+            }
+
+        } catch (Exception e) {
+            Log.e(LOG_TAG, e.getMessage());
         }
     }
 
-    public void restartAudio() {
-        if (mMediaPlayer != null && !mMediaPlayer.isPlaying()) {
-            mMediaPlayer.prepareAsync();
-        }
-    }
 
     public void seekTo(int progress) {
         try {
@@ -408,13 +417,12 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
                 cancelSeekBarUpdateHandler();
                 mMediaPlayer.seekTo(progress);
             }
-        }
-        catch(Exception e){
-            Log.e(LOG_TAG,e.getMessage());
+        } catch (Exception e) {
+            Log.e(LOG_TAG, e.getMessage());
         }
     }
 
-    void initNotification() {
+    void setupAsForeground() {
 
         String songName = "test";
         PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0,
@@ -445,12 +453,16 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
     }
 
     private void setupSeekBarUpdateHandler() {
-        handler.removeCallbacks(updateSeekBarUI);
-        handler.postDelayed(updateSeekBarUI, SEEK_BAR_UPDATE_INTERVAL);
+        if(handler!=null) {
+            handler.removeCallbacks(updateSeekBarUI);
+            handler.postDelayed(updateSeekBarUI, SEEK_BAR_UPDATE_INTERVAL);
+        }
     }
 
     private void cancelSeekBarUpdateHandler() {
-        handler.removeCallbacks(updateSeekBarUI);
+        if(handler!=null) {
+            handler.removeCallbacks(updateSeekBarUI);
+        }
     }
 
     private final Runnable updateSeekBarUI = new Runnable() {
@@ -463,15 +475,40 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
 
     private void dispatchPlaybackProgress() {
 
-        if (mMediaPlayer.isPlaying()) {
-            int curPosition = mMediaPlayer.getCurrentPosition();
-            int trackDuration = mMediaPlayer.getDuration();
+        try {
 
-            Bundle extras = new Bundle();
-            extras.putInt(CURRENT_POSITION_EXTRA, curPosition);
-            extras.putInt(TRACK_DURATION_EXTRA, trackDuration);
-            extras.putParcelable(NOW_PLAYING_EXTRA, mPlayList.get(mCurrentTrackIndex));
-            broadcastEvent(PLAYBACK_PROGRESS_BROADCAST_EVENT, extras);
+            if (mMediaPlayer != null) {
+                if (mMediaPlayer.isPlaying()) {
+                    int curPosition = mMediaPlayer.getCurrentPosition();
+                    mNowPlayingTrackDuration = mMediaPlayer.getDuration();
+
+                    Bundle extras = new Bundle();
+                    extras.putInt(CURRENT_POSITION_EXTRA, curPosition);
+                    extras.putInt(TRACK_DURATION_EXTRA, mNowPlayingTrackDuration);
+                    extras.putParcelable(NOW_PLAYING_EXTRA, mPlayList.get(mCurrentTrackIndex));
+                    extras.putParcelableArrayList(PLAY_LIST_EXTRA, mPlayList);
+                    extras.putInt(SELECTED_INDEX_EXTRA, mCurrentTrackIndex);
+                    extras.putString(ARTIST_NAME_EXTRA, mArtistName);
+                    broadcastEvent(PLAYBACK_PROGRESS_BROADCAST_EVENT, extras);
+                } else {
+
+                    if (mPlaybackState == PlaybackStates.PAUSED) {
+
+                        int curPosition = mMediaPlayer.getCurrentPosition();
+
+                        Bundle extras = new Bundle();
+                        extras.putInt(CURRENT_POSITION_EXTRA, curPosition);
+                        extras.putInt(TRACK_DURATION_EXTRA, mNowPlayingTrackDuration);
+                        extras.putParcelable(NOW_PLAYING_EXTRA, mPlayList.get(mCurrentTrackIndex));
+                        extras.putParcelableArrayList(PLAY_LIST_EXTRA, mPlayList);
+                        extras.putInt(SELECTED_INDEX_EXTRA, mCurrentTrackIndex);
+                        extras.putString(ARTIST_NAME_EXTRA, mArtistName);
+                        broadcastEvent(PLAYBACK_PAUSE_BROADCAST_EVENT, extras);
+                    }
+                }
+            }
+        }catch(Exception e){
+            Log.e(LOG_TAG,e.getMessage());
         }
     }
 }

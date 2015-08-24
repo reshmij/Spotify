@@ -102,6 +102,13 @@ public class ArtistSearchFragment extends Fragment {
             }
         });
 
+        if(savedInstanceState!=null) {
+            //Highlight  the last selected item on the list
+            if (mPosition != ListView.INVALID_POSITION) {
+                mListView.smoothScrollToPosition(mPosition);
+            }
+        }
+
         return rootView;
     }
 
@@ -110,9 +117,9 @@ public class ArtistSearchFragment extends Fragment {
     public void onStart() {
         super.onStart();
         //Highlight  the last selected item on the list
-        if (mPosition != ListView.INVALID_POSITION) {
-            mListView.smoothScrollToPosition(mPosition);
-        }
+        //if (mPosition != ListView.INVALID_POSITION) {
+        //    mListView.smoothScrollToPosition(mPosition);
+        //}
     }
 
     @Override
@@ -154,6 +161,7 @@ public class ArtistSearchFragment extends Fragment {
         } else {
             //Search field is empty. Clear the list
             mAdapter.clear();
+            clearListItemSelection();
         }
     }
 
@@ -188,10 +196,12 @@ public class ArtistSearchFragment extends Fragment {
             super.onPostExecute(artists);
             try {
                 mArtistInfoList.clear();
+                clearListItemSelection();
                 //If search result is empty, clear the list and display a toast
                 if (artists.isEmpty()) {
                     mAdapter.clear();
                     Toast.makeText(getActivity(), getResources().getString(R.string.artist_not_found), Toast.LENGTH_SHORT).show();
+
                     return;
                 }
                 //Search returned valid results. Extract the required fields from it.
@@ -220,5 +230,12 @@ public class ArtistSearchFragment extends Fragment {
 
     public interface OnListItemClickListener {
         public void onItemClick(String artistName, String artistId);
+    }
+
+
+    private void clearListItemSelection( ){
+        mListView.clearChoices();
+        mAdapter.notifyDataSetChanged();
+        mPosition = ListView.INVALID_POSITION;
     }
 }

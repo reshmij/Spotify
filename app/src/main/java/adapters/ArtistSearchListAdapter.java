@@ -23,7 +23,6 @@ public class ArtistSearchListAdapter extends BaseAdapter {
 
     private List<ArtistInfo> mArtistInfoList = new ArrayList<ArtistInfo>();
     private Context mContext = null;
-    private int selectedPosition = -1;
 
     private static LayoutInflater inflater = null;
 
@@ -47,6 +46,7 @@ public class ArtistSearchListAdapter extends BaseAdapter {
         removeAll();
         notifyDataSetChanged();
     }
+
 
     @Override
     public int getCount() {

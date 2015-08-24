@@ -46,6 +46,7 @@ public class TopTenTracksFragment extends Fragment {
     public static final String TRACK_LIST = "trackList";
     public static final String SELECTED_TRACK_INDEX = "trackListPosition";
     public static final String ARTIST_NAME = "artistName";
+    public static final String NOW_PLAYING_TRACK = "nowPlayingTrack";
     private OnTrackSelectedListener mListener = null;
 
     public static TopTenTracksFragment newInstance(String artistId) {
@@ -95,12 +96,14 @@ public class TopTenTracksFragment extends Fragment {
             mTopTenTrackList.setSelection(selectPosition);
         }
 
-        //Make a remote call to fetch the top tracks, if there is no saved instance
         Bundle args = getArguments();
-        mArtistName = args.getString(ArtistSearchFragment.ARTIST_NAME);
+        if(args!=null){
+            mArtistName = args.getString(ArtistSearchFragment.ARTIST_NAME);
+        }
 
         if(savedInstanceState == null){
 
+            //Make a remote call to fetch the top tracks, if there is no saved instance
             if(args!=null) {
                 String artistId = args.getString(ArtistSearchFragment.ARTIST_ID);
                 mGetTopTracksTask = new GetArtistTopTracksTask();
