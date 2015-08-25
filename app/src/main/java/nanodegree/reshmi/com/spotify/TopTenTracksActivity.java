@@ -11,9 +11,12 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.NavUtils;
+import android.support.v4.app.ShareCompat;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.ShareActionProvider;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -42,6 +45,7 @@ public class TopTenTracksActivity extends AppCompatActivity implements TopTenTra
     private boolean mShowNowPlaying = false;
     Bundle mExtras = null;
     LocalBroadcastManager mLocalBroadcastManager;
+    ShareActionProvider mShareActionProvider = null;
 
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -136,11 +140,23 @@ public class TopTenTracksActivity extends AppCompatActivity implements TopTenTra
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
 
-        MenuItem item = menu.findItem(R.id.action_now_playing);
+        MenuItem nowPlayingItem = menu.findItem(R.id.action_now_playing);
+        MenuItem shareItem = menu.findItem(R.id.action_share_url);
+        if(shareItem != null){
+
+            mShareActionProvider = (ShareActionProvider) MenuItemCompat.getActionProvider(shareItem);
+            // Set the share Intent
+            if (mShareActionProvider != null) {
+                mShareActionProvider.setShareIntent(getDefaultIntent());
+            }
+        }
+
         if (mShowNowPlaying) {
-            item.setVisible(true);
+            nowPlayingItem.setVisible(true);
+            shareItem.setVisible(true);
         } else {
-            item.setVisible(false);
+            nowPlayingItem.setVisible(false);
+            shareItem.setVisible(false);
         }
         return true;
     }
@@ -155,4 +171,21 @@ public class TopTenTracksActivity extends AppCompatActivity implements TopTenTra
         intent.putExtra(TopTenTracksFragment.ARTIST_NAME, artistName);
         startActivity(intent);
     }
+
+    private Intent getDefaultIntent( ){
+        Intent intent = null;
+        try {
+            TrackInfo nowPlayingTrack = mExtras.getParcelable(MusicPlayerService.NOW_PLAYING_EXTRA);
+
+            intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("text/plain");
+            intent.putExtra(Intent.EXTRA_TEXT,nowPlayingTrack.getExternalUrl());
+        }
+        catch (Exception e){
+            Log.e(LOG_TAG, e.getMessage() );
+        }
+
+        return intent;
+    }
+
 }

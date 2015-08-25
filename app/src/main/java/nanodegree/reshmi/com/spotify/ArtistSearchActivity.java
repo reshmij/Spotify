@@ -6,32 +6,34 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
-
+import android.support.v4.app.ShareCompat;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
-import android.util.DisplayMetrics;
-import android.view.Display;
+import android.support.v7.widget.ShareActionProvider;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.LinearLayout;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 
 import model.TrackInfo;
-import retrofit.http.HEAD;
 
 /**
  * Created by annupinju on 8/12/2015.
  */
 public class ArtistSearchActivity extends AppCompatActivity implements ArtistSearchFragment.OnListItemClickListener, TopTenTracksFragment.OnTrackSelectedListener {
 
+    private String LOG_TAG = ArtistSearchActivity.class.getSimpleName();
     ArtistSearchFragment mArtistSearchFragment;
     boolean mTwoPane = false;
     boolean mShowNowPlaying = false;
     LocalBroadcastManager mLocalBroadcastManager;
     Bundle mExtras = null;
+    ShareActionProvider mShareActionProvider = null;
 
     public static String TOP_TEN_FRAGMENT_TAG = "toptentracks";
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
@@ -128,13 +130,26 @@ public class ArtistSearchActivity extends AppCompatActivity implements ArtistSea
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
 
-        MenuItem item = menu.findItem(R.id.action_now_playing);
-        if (mShowNowPlaying) {
-            item.setVisible(true);
-        } else {
-            item.setVisible(false);
+        MenuItem nowPlayingItem = menu.findItem(R.id.action_now_playing);
+        MenuItem shareItem = menu.findItem(R.id.action_share_url);
+        if(shareItem != null){
+
+            mShareActionProvider = (ShareActionProvider)MenuItemCompat.getActionProvider(shareItem);
+            // Set the share Intent
+            if (mShareActionProvider != null) {
+                mShareActionProvider.setShareIntent(getDefaultIntent());
+            }
         }
-        return true;
+
+        if (mShowNowPlaying) {
+            nowPlayingItem.setVisible(true);
+            shareItem.setVisible(true);
+        } else {
+            nowPlayingItem.setVisible(false);
+            shareItem.setVisible(false);
+        }
+
+        return super.onCreateOptionsMenu(menu);
     }
 
     @Override
@@ -183,6 +198,24 @@ public class ArtistSearchActivity extends AppCompatActivity implements ArtistSea
             MusicPlayerFragment newFragment = MusicPlayerFragment.newInstance(trackInfoResults, position, artistName, null);
             newFragment.show(fragmentManager, "dialog");
         }
+    }
+
+    private Intent getDefaultIntent( ){
+
+        Intent intent = null;
+        try {
+
+            TrackInfo nowPlayingTrack = mExtras.getParcelable(MusicPlayerService.NOW_PLAYING_EXTRA);
+
+            intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("text/plain");
+            intent.putExtra(Intent.EXTRA_TEXT,nowPlayingTrack.getExternalUrl());
+        }
+        catch (Exception e){
+            Log.e(LOG_TAG, e.getMessage() );
+        }
+
+        return intent;
     }
 
 }

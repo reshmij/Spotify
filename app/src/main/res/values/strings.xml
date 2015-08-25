@@ -2,8 +2,9 @@
     <string name="app_name">Spotify Streamer</string>
 
     <string name="hello_world">Hello world!</string>
-    <string name="action_settings">Settings</string>
-    <string name="action_player">Now Playing</string>
+    <string name="str_action_settings">Settings</string>
+    <string name="str_action_player">Now Playing</string>
+    <string name="str_action_share">Share</string>
     <string name="top_ten_tracks">Top 10 tracks</string>
     <string name="artist_not_found">We could not find the artist. Please try refining your search</string>
     <string name="tracks_not_found">Sorry, we were unable to get this data. Please try again later.</string>

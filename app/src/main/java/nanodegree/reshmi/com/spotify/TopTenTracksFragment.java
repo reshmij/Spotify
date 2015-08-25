@@ -184,7 +184,9 @@ public class TopTenTracksFragment extends Fragment {
                             t.album.name,
                             getSmallThumbnail(t.album.images),
                             getLargeThumbnail(t.album.images),
-                            t.preview_url);
+                            t.preview_url,
+                            t.album.external_urls.get("spotify")
+                            );
 
                     mTrackInfoResults.add(trackInfo);
                 }

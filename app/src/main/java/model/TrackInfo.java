@@ -14,13 +14,15 @@ public class TrackInfo implements Parcelable {
     private String albumThumbnailSmallUrl;
     private String getAlbumThumbnailLrgUrl;
     private String trackUrl;
+    private String externalUrl;
 
-    public TrackInfo(String trackName, String albumName, String albumThumbnailSmallUrl, String getAlbumThumbnailLrgUrl, String trackUrl) {
+    public TrackInfo(String trackName, String albumName, String albumThumbnailSmallUrl, String getAlbumThumbnailLrgUrl, String trackUrl, String externalUrl) {
         this.trackName = trackName;
         this.albumName = albumName;
         this.albumThumbnailSmallUrl = albumThumbnailSmallUrl;
         this.getAlbumThumbnailLrgUrl = getAlbumThumbnailLrgUrl;
         this.trackUrl = trackUrl;
+        this.externalUrl = externalUrl;
     }
 
     private TrackInfo(Parcel in) {
@@ -29,6 +31,7 @@ public class TrackInfo implements Parcelable {
         this.albumThumbnailSmallUrl = in.readString();
         this.getAlbumThumbnailLrgUrl = in.readString();
         this.trackUrl = in.readString();
+        this.externalUrl = in.readString();
     }
 
     public String getTrackUrl() {
@@ -51,6 +54,15 @@ public class TrackInfo implements Parcelable {
         return trackName;
     }
 
+
+    public String getExternalUrl() {
+        return externalUrl;
+    }
+
+    public void setExternalUrl(String externalUrl) {
+        this.externalUrl = externalUrl;
+    }
+
     @Override
     public int describeContents() {
         return 0;
@@ -64,6 +76,7 @@ public class TrackInfo implements Parcelable {
         parcel.writeString(this.albumThumbnailSmallUrl);
         parcel.writeString(this.getAlbumThumbnailLrgUrl);
         parcel.writeString(this.trackUrl);
+        parcel.writeString(this.externalUrl);
     }
 
     public static final Parcelable.Creator<TrackInfo> CREATOR
@@ -81,13 +94,13 @@ public class TrackInfo implements Parcelable {
     public boolean equals(Object o) {
 
         //Override the equals method.
-        TrackInfo in = (TrackInfo)o;
-        if(in.getTrackName().equals(this.trackName)&&
-           in.getAlbumName().equals(this.albumName)&&
-           in.getTrackUrl().equals(this.trackUrl)){
+        TrackInfo in = (TrackInfo) o;
+        if (in.getTrackName().equals(this.trackName) &&
+                in.getAlbumName().equals(this.albumName) &&
+                in.getTrackUrl().equals(this.trackUrl) &&
+                in.getExternalUrl().equals(this.externalUrl)) {
             return true;
-        }
-        else{
+        } else {
             return false;
         }
 

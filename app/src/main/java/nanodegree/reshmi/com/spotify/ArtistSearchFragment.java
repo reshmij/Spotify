@@ -112,16 +112,6 @@ public class ArtistSearchFragment extends Fragment {
         return rootView;
     }
 
-
-    @Override
-    public void onStart() {
-        super.onStart();
-        //Highlight  the last selected item on the list
-        //if (mPosition != ListView.INVALID_POSITION) {
-        //    mListView.smoothScrollToPosition(mPosition);
-        //}
-    }
-
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
