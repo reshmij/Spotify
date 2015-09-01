@@ -4,8 +4,10 @@ import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -49,12 +51,13 @@ public class TopTenTracksFragment extends Fragment {
     public static final String NOW_PLAYING_TRACK = "nowPlayingTrack";
     private OnTrackSelectedListener mListener = null;
 
-    public static TopTenTracksFragment newInstance(String artistId) {
+    public static TopTenTracksFragment newInstance(String artistId, String artistName) {
         TopTenTracksFragment f = new TopTenTracksFragment();
 
         // Supply artistId input as an argument.
         Bundle args = new Bundle();
         args.putString(ArtistSearchFragment.ARTIST_ID, artistId);
+        args.putString(ArtistSearchFragment.ARTIST_NAME, artistName);
         f.setArguments(args);
 
         return f;
@@ -79,6 +82,11 @@ public class TopTenTracksFragment extends Fragment {
             selectPosition = savedInstanceState.getInt(SELECTED_TRACK_INDEX);
         }
 
+        Bundle args = getArguments();
+        if(args!=null){
+            mArtistName = args.getString(ArtistSearchFragment.ARTIST_NAME);
+        }
+
         // Get a handle to the list view
         mTopTenTrackList = (ListView) rootView.findViewById(R.id.list_view_top_ten_tracks);
         mTopTenTrackList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -96,10 +104,6 @@ public class TopTenTracksFragment extends Fragment {
             mTopTenTrackList.setSelection(selectPosition);
         }
 
-        Bundle args = getArguments();
-        if(args!=null){
-            mArtistName = args.getString(ArtistSearchFragment.ARTIST_NAME);
-        }
 
         if(savedInstanceState == null){
 
@@ -134,6 +138,13 @@ public class TopTenTracksFragment extends Fragment {
         outState.putParcelableArrayList(TRACK_LIST, mTrackInfoResults);
     }
 
+    private String getCountryCode() {
+
+        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        return sharedPrefs.getString(getResources().getString(R.string.country_codes_preference_key),"US");
+    }
+
+
     public interface OnTrackSelectedListener{
         public void onSelectTrack(ArrayList<TrackInfo> trackInfoResults, int position , String artistName);
     }
@@ -154,7 +165,7 @@ public class TopTenTracksFragment extends Fragment {
                 SpotifyService spotifyService = api.getService();
 
                 Map<String, Object> options = new HashMap<>();
-                options.put("country", "US");
+                options.put("country", getCountryCode());
 
                 tracks = spotifyService.getArtistTopTrack(artistId, options);
 
@@ -229,4 +240,5 @@ public class TopTenTracksFragment extends Fragment {
             return images.get(last).url;
         }
     }
+
 }

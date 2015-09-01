@@ -21,8 +21,8 @@
         android:text="Album Name" />
 
     <ImageView
-        style="@style/ThumbnailImgViewStyle"
         android:id="@+id/image_player_thumbnail"
+        style="@style/ThumbnailImgViewStyle"
         android:layout_gravity="center_horizontal"
         android:layout_weight="1"
         android:src="@drawable/abc_ic_menu_cut_mtrl_alpha" />
@@ -34,45 +34,67 @@
         android:layout_gravity="center_horizontal"
         android:text="Song Name" />
 
-    <SeekBar
-        android:id="@+id/seek_bar_player"
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        />
+        android:layout_height="wrap_content">
+
+        <SeekBar
+            android:id="@+id/seek_bar_player"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+
+        <TextView
+            android:id="@+id/text_elapsed_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/seek_bar_player"
+            android:layout_alignLeft="@id/seek_bar_player"
+            android:text="00:00" />
+
+        <TextView
+            android:id="@+id/text_track_duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/seek_bar_player"
+            android:layout_alignRight="@id/seek_bar_player"
+            android:text="00:00" />
+
+    </RelativeLayout>
+
 
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
-        android:orientation="horizontal"
         android:layout_marginLeft="@dimen/media_player_button_padding"
         android:layout_marginRight="@dimen/media_player_button_padding"
-        >
+        android:orientation="horizontal">
 
         <ImageButton
             android:id="@+id/btn_media_prev"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:tint="@color/black"
             android:layout_margin="@dimen/media_player_button_padding"
-            android:src="@android:drawable/ic_media_previous"/>
+            android:src="@android:drawable/ic_media_previous"
+            android:tint="@color/black" />
 
         <ImageButton
             android:id="@+id/btn_media_play_pause"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="@dimen/media_player_button_padding"
-            android:tint="@color/black"
-            android:src="@android:drawable/ic_media_play"/>
+            android:src="@android:drawable/ic_media_play"
+            android:tint="@color/black" />
 
         <ImageButton
             android:id="@+id/btn_media_next"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="@dimen/media_player_button_padding"
-            android:tint="@color/black"
-            android:src="@android:drawable/ic_media_next"/>
+            android:src="@android:drawable/ic_media_next"
+            android:tint="@color/black" />
 
-        </LinearLayout>
+    </LinearLayout>
 
 </LinearLayout>

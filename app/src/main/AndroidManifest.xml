@@ -46,6 +46,11 @@
                 android:value=".TopTenTracksActivity" />
         </activity>
 
+        <activity
+            android:name=".SetPreferencesActivity"
+            android:label="@string/app_name" >
+        </activity>
+
         <service
             android:name=".MusicPlayerService" />
 

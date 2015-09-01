@@ -7,15 +7,22 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
+import android.preference.PreferenceManager;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v7.app.NotificationCompat;
 import android.util.Log;
+import android.widget.RemoteViews;
 import android.widget.Toast;
+
+import com.squareup.picasso.Picasso;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -49,7 +56,6 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
     public static final String TRACK_EXTRA = "now_playing_extra";
     public static final String CURRENT_POSITION_EXTRA = "current_playback_pos";
     public static final String TRACK_DURATION_EXTRA = "track_duration";
-    public static final String IS_NEW_PLAYLIST = "is_new_playlist";
     public static final int SEEK_BAR_UPDATE_INTERVAL = 500;//in milliseconds
 
 
@@ -62,9 +68,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
         PLAYING,
         PAUSED,
         STOPPED
-    }
-
-    ;
+    } ;
 
     private MediaPlayer mMediaPlayer = new MediaPlayer();
     private Handler handler = new Handler();
@@ -74,6 +78,9 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
     TrackInfo mNowPlayingTrack = null;
     String mArtistName = null;
     int mNowPlayingTrackDuration = -1;
+    NotificationCompat.Builder mBuilder=null;
+
+
     @Override
     public void onCreate() {
         setListeners();
@@ -93,7 +100,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
             } else if (action.equals(IC_ACTION_INIT)) {
                 Bundle extras = intent.getExtras();
                 ArrayList<TrackInfo> list = extras.getParcelableArrayList(PLAY_LIST_EXTRA);
-                int selectedIndex = extras.getInt(CURRENT_POSITION_EXTRA);
+                int selectedIndex = extras.getInt(SELECTED_INDEX_EXTRA);
                 String artistName = extras.getString(ARTIST_NAME_EXTRA);
 
                 setPlayList(list);
@@ -163,6 +170,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
             cancelSeekBarUpdateHandler();
             mNowPlayingTrack = null;
             mPlaybackState = PlaybackStates.RESET;
+            mBuilder = null;
 
             if (mMediaPlayer != null) {
                 if (mMediaPlayer.isPlaying()) {
@@ -213,10 +221,14 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
 
     @Override
     public void onCompletion(MediaPlayer mediaPlayer) {
+
+        int trackDuration = mediaPlayer.getDuration();
         stopAudio();
         cancelSeekBarUpdateHandler();
         //Broadcast this event so UI can be updated ( Pause button -> Play button)
-        broadcastEvent(PLAYBACK_COMPLETE_BROADCAST_EVENT, null);
+        Bundle extras = new Bundle();
+        extras.putInt(TRACK_DURATION_EXTRA,trackDuration);
+        broadcastEvent(PLAYBACK_COMPLETE_BROADCAST_EVENT, extras);
     }
 
     @Override
@@ -250,7 +262,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
                 }
 
                 ArrayList<TrackInfo> list = extras.getParcelableArrayList(PLAY_LIST_EXTRA);
-                int selectedIndex = extras.getInt(CURRENT_POSITION_EXTRA);
+                int selectedIndex = extras.getInt(SELECTED_INDEX_EXTRA);
                 String artistName = extras.getString(ARTIST_NAME_EXTRA);
 
                 setPlayList(list);
@@ -342,7 +354,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
                 args.putString(ARTIST_NAME_EXTRA, mArtistName);
                 broadcastEvent(PLAYBACK_NEW_TRACK_BROADCAST_EVENT, args);
                 setupSeekBarUpdateHandler();
-                setupAsForeground();
+                buildNotification();
                 mPlaybackState = PlaybackStates.PLAYING;
             }
 
@@ -357,7 +369,8 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
             if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
                 mMediaPlayer.pause();
 
-                stopForeground(false);
+                //Update notification
+                buildNotification();
 
                 int curPosition = mMediaPlayer.getCurrentPosition();
                 int trackDuration = mNowPlayingTrackDuration;
@@ -398,10 +411,14 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
 
         try {
             if (mMediaPlayer != null && !mMediaPlayer.isPlaying()) {
+
                 mMediaPlayer.start();
                 mPlaybackState = PlaybackStates.PLAYING;
-                setupAsForeground();
                 broadcastEvent(PLAYBACK_RESUME_BROADCAST_EVENT, null);
+
+                //Update notification
+                buildNotification();
+
             }
 
         } catch (Exception e) {
@@ -422,21 +439,86 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
         }
     }
 
-    void setupAsForeground() {
+    void buildNotification() {
 
-        String songName = "test";
-        PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0,
-                new Intent(getApplicationContext(), ArtistSearchActivity.class),
-                PendingIntent.FLAG_UPDATE_CURRENT);
-        Notification notification = new Notification();
-        notification.tickerText = getResources().getString(R.string.ticker_text) + songName;
-        notification.icon = android.R.drawable.presence_audio_online;
-        notification.flags |= Notification.FLAG_ONGOING_EVENT;
-        notification.setLatestEventInfo(getApplicationContext(), getApplicationInfo().loadLabel(getPackageManager()),
-                getResources().getString(R.string.ticker_text) + songName, pi);
-        startForeground(NOTIFICATION_ID, notification);
+        try {
+
+            PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0,
+                    new Intent(), PendingIntent.FLAG_UPDATE_CURRENT);
+
+            mBuilder = (NotificationCompat.Builder) new NotificationCompat.Builder(this);
+
+            mBuilder.setTicker(mNowPlayingTrack.getTrackName())
+                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setContentIntent(pi)
+                    .setOngoing(true)
+                    .setVisibility(getNotificationVisibility())
+                    .setContentTitle(mArtistName)
+                    .setContentText(mNowPlayingTrack.getTrackName());
+
+            Notification notification = mBuilder.build();
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+
+                if(getNotificationVisibility() == NotificationCompat.VISIBILITY_PUBLIC) {
+                    RemoteViews remoteViews = setUpRemoteView(notification);
+                    notification.bigContentView = remoteViews;
+                }
+            }
+
+            startForeground(NOTIFICATION_ID, notification);
+        }
+        catch(Exception e){
+            Log.e(LOG_TAG,e.getMessage());
+        }
     }
 
+    RemoteViews setUpRemoteView(Notification notification ){
+
+        RemoteViews remoteViews = new RemoteViews(getPackageName(),
+                R.layout.notification);
+
+        if(!mMediaPlayer.isPlaying()){
+            remoteViews.setImageViewResource(R.id.btn_notif_play_pause, android.R.drawable.ic_media_play);
+        }
+        else {
+            remoteViews.setImageViewResource(R.id.btn_notif_play_pause, android.R.drawable.ic_media_pause);
+        }
+
+        remoteViews.setTextViewText(R.id.text_notif_artist_name, mArtistName);
+        remoteViews.setTextViewText(R.id.text_notif_song_name, mNowPlayingTrack.getTrackName());
+
+        Picasso.with(this)
+                .load(mNowPlayingTrack.getGetAlbumThumbnailLrgUrl())
+                .into(remoteViews, R.id.image_notif_thumbnail, NOTIFICATION_ID, notification);
+
+        Intent playIntent = new Intent(this,MusicPlayerService.class);
+        playIntent.setAction(IC_ACTION_PLAY);
+        playIntent.putParcelableArrayListExtra(PLAY_LIST_EXTRA, mPlayList);
+        playIntent.putExtra(SELECTED_INDEX_EXTRA, mCurrentTrackIndex);
+        playIntent.putExtra(ARTIST_NAME_EXTRA, mArtistName);
+        PendingIntent pendingPlayIntent =
+                PendingIntent.getService(
+                        this,
+                        0,
+                        playIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT);
+        remoteViews.setOnClickPendingIntent(R.id.btn_notif_play_pause, pendingPlayIntent);
+
+
+        Intent prevIntent = new Intent(this,MusicPlayerService.class);
+        prevIntent.setAction(IC_ACTION_PLAY_PREV);
+        PendingIntent pendingPrevIntent = PendingIntent.getService( this,1, prevIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        remoteViews.setOnClickPendingIntent(R.id.btn_notif_prev,pendingPrevIntent);
+
+
+        Intent nextIntent = new Intent(this,MusicPlayerService.class);
+        nextIntent.setAction(IC_ACTION_PLAY_NEXT);
+        PendingIntent pendingNextIntent = PendingIntent.getService( this, 2, nextIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        remoteViews.setOnClickPendingIntent(R.id.btn_notif_next,pendingNextIntent);
+
+        return remoteViews;
+    }
 
     void cancelNotification() {
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -510,5 +592,14 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnErrorLi
         }catch(Exception e){
             Log.e(LOG_TAG,e.getMessage());
         }
+    }
+
+    int getNotificationVisibility( ){
+
+        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+        boolean visibility =  sharedPrefs.getBoolean(getString(R.string.notification_preference_key), true);
+
+        int flag = (visibility == true)?NotificationCompat.VISIBILITY_PUBLIC:NotificationCompat.VISIBILITY_PRIVATE;
+        return flag;
     }
 }

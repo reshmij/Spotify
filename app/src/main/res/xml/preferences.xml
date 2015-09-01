@@ -1,0 +1,15 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <ListPreference
+        android:key="@string/country_codes_preference_key"
+        android:summary="%s"
+        android:title="@string/country_codes_title"
+        android:defaultValue="US"/>
+
+    <SwitchPreference
+        android:key="@string/notification_preference_key"
+        android:summary="@string/notification_preference_summary"
+        android:title="@string/notification_preference_title"
+        android:defaultValue="true"/>
+
+</PreferenceScreen>

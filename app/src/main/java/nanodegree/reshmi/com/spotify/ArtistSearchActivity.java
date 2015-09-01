@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
-import android.support.v4.app.ShareCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.ActionBar;
@@ -16,7 +15,6 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Toast;
 
 import java.util.ArrayList;
 
@@ -104,7 +102,7 @@ public class ArtistSearchActivity extends AppCompatActivity implements ArtistSea
 
         if (mTwoPane) {
             //Replace the top ten tracks fragment on the right pane
-            TopTenTracksFragment topTenTracksFragment = TopTenTracksFragment.newInstance(artistId);
+            TopTenTracksFragment topTenTracksFragment = TopTenTracksFragment.newInstance(artistId, artistName);
 
             getFragmentManager().beginTransaction()
                     .replace(R.id.top_ten_tracks_container, topTenTracksFragment, TOP_TEN_FRAGMENT_TAG)
@@ -158,11 +156,19 @@ public class ArtistSearchActivity extends AppCompatActivity implements ArtistSea
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
+        Log.e(LOG_TAG,"id="+id);
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
+
+            Log.e(LOG_TAG,"action_settings");
+            Intent intent = new Intent( this, SetPreferencesActivity.class);
+            startActivity(intent);
             return true;
+
         } else if (id == R.id.action_now_playing) {
+
+            Log.e(LOG_TAG,"action_now_playing");
 
             if (mExtras != null) {
                 ArrayList<TrackInfo> list = mExtras.getParcelableArrayList(MusicPlayerService.PLAY_LIST_EXTRA);
@@ -184,6 +190,8 @@ public class ArtistSearchActivity extends AppCompatActivity implements ArtistSea
                     startActivity(intent);
                 }
             }
+
+            return true;
         }
 
         return super.onOptionsItemSelected(item);

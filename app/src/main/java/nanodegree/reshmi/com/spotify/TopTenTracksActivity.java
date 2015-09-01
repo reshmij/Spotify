@@ -124,7 +124,13 @@ public class TopTenTracksActivity extends AppCompatActivity implements TopTenTra
                     intent.putExtra(TopTenTracksFragment.ARTIST_NAME, artistName);
                     intent.putExtra(TopTenTracksFragment.NOW_PLAYING_TRACK, nowPlayingTrack);
                     startActivity(intent);
+                }
+                return true;
 
+            case R.id.action_settings:
+                {
+                    Intent intent = new Intent( this, SetPreferencesActivity.class);
+                    startActivity(intent);
                 }
                 return true;
 

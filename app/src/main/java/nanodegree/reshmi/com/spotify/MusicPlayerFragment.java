@@ -21,7 +21,10 @@ import android.widget.TextView;
 
 import com.squareup.picasso.Picasso;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 import model.TrackInfo;
 
@@ -46,6 +49,8 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
     TextView mSongNameTextView;
     ImageView mAlbumThumbnail;
     SeekBar mSeekBar;
+    TextView mElapsedTime;
+    TextView mTrackDuration;
 
     Intent mServiceIntent = null;
     LocalBroadcastManager mLocalBroadcastManager;
@@ -107,6 +112,8 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
         mSongNameTextView = (TextView) rootView.findViewById(R.id.text_player_song_name);
         mAlbumThumbnail = (ImageView) rootView.findViewById(R.id.image_player_thumbnail);
         mSeekBar = (SeekBar) rootView.findViewById(R.id.seek_bar_player);
+        mElapsedTime = (TextView) rootView.findViewById(R.id.text_elapsed_time);
+        mTrackDuration = (TextView) rootView.findViewById(R.id.text_track_duration);
 
         //Set listeners
         mBtnPrev.setOnClickListener(this);
@@ -145,7 +152,7 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
 
                 Bundle extras = new Bundle();
                 extras.putParcelableArrayList(MusicPlayerService.PLAY_LIST_EXTRA, mPlayList);
-                extras.putInt(MusicPlayerService.CURRENT_POSITION_EXTRA, mCurrentTrackIndex);
+                extras.putInt(MusicPlayerService.SELECTED_INDEX_EXTRA, mCurrentTrackIndex);
                 extras.putParcelable(MusicPlayerService.TRACK_EXTRA, mPlayList.get(mCurrentTrackIndex));
                 extras.putString(MusicPlayerService.ARTIST_NAME_EXTRA, mArtistName);
                 startIntent(MusicPlayerService.IC_ACTION_PLAY_NEW_TRACK, extras);
@@ -267,8 +274,9 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
     void handleIntent(Intent intent) {
         if (intent.getAction().equals(MusicPlayerService.PLAYBACK_COMPLETE_BROADCAST_EVENT)) {
             Log.d(LOG_TAG, "PLAYBACK_COMPLETE_BROADCAST_EVENT");
-
+            int trackLength = intent.getIntExtra(MusicPlayerService.TRACK_DURATION_EXTRA,0);
             mSeekBar.setProgress(mSeekBar.getMax());
+            mElapsedTime.setText(formatTimeInMilli(trackLength));
             setImageToPlayButton();
 
         } else if (intent.getAction().equals(MusicPlayerService.PLAYBACK_PROGRESS_BROADCAST_EVENT)) {
@@ -278,6 +286,9 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
 
             mSeekBar.setMax(trackLength);
             mSeekBar.setProgress(cur);
+
+            mElapsedTime.setText(formatTimeInMilli(cur));
+            mTrackDuration.setText(formatTimeInMilli(trackLength));
 
             setImageToPauseButton();
 
@@ -294,6 +305,9 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
         } else if (intent.getAction().equals(MusicPlayerService.PLAYBACK_ERROR_BROADCAST_EVENT)) {
 
             setImageToPlayButton();
+
+            long milli = 0;
+            mElapsedTime.setText(formatTimeInMilli(milli));
 
         } else if (intent.getAction().equals(MusicPlayerService.PLAYBACK_RESUME_BROADCAST_EVENT)) {
 
@@ -341,5 +355,21 @@ public class MusicPlayerFragment extends DialogFragment implements View.OnClickL
     void startIntent(String action){
         mServiceIntent.setAction(action);
         getActivity().startService(mServiceIntent);
+    }
+
+    String formatTimeInMilli(long milliSeconds){
+
+        String result;
+
+        if(milliSeconds/(1000 * 60 * 60)>0){
+            //Set to hh:mm:ss format
+             result = String.format("%02d:%02d:%02d", TimeUnit.MILLISECONDS.toHours(milliSeconds),TimeUnit.MILLISECONDS.toMinutes(milliSeconds),TimeUnit.MILLISECONDS.toSeconds(milliSeconds));
+        }
+        else{
+            //Set to mm:ss format
+            result = String.format("%02d:%02d", TimeUnit.MILLISECONDS.toMinutes(milliSeconds),TimeUnit.MILLISECONDS.toSeconds(milliSeconds));
+        }
+
+        return result;
     }
 }
